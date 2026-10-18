@@ -1,0 +1,26 @@
+<header class="fixed inset-x-0 top-0 z-30 flex h-header items-center justify-between border-b border-slate-200 bg-white px-4">
+	<div class="flex items-center gap-3">
+		<button
+			type="button"
+			class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+			aria-label="Abrir menú"
+			[attr.aria-expanded]="nav.sidebarOpen()"
+			(click)="nav.toggleSidebar()"
+		>
+			<svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<path d="M3 5h14v2H3V5Zm0 4h14v2H3V9Zm0 4h14v2H3v-2Z" />
+			</svg>
+		</button>
+		<span class="text-lg font-semibold text-brand-700">Foca Comercial</span>
+	</div>
+
+	@if (auth.currentUser(); as user) {
+		<div class="flex items-center gap-3">
+			<div class="hidden text-right sm:block">
+				<p class="text-sm font-medium">{{ user.username || 'Usuario' }}</p>
+				<p class="text-xs text-slate-500">{{ user.roles.join(', ') }}</p>
+			</div>
+			<button type="button" class="btn-secondary" appLogoutButton>Salir</button>
+		</div>
+	}
+</header>

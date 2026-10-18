@@ -1,0 +1,140 @@
+# FC Web MVP
+
+Frontend de **Foca Comercial** (toma de pedidos y facturación), construido con
+**Angular 20 + Tailwind CSS v4 + SweetAlert2**. Consume la API
+[`fc-api-mvp`](https://github.com/Foca-Comercial/fc-api-mvp) (FastAPI).
+
+## Requisitos
+
+- Node.js 20.19+ o 22.12+
+- La API corriendo en `http://localhost:8000` (`uvicorn app.main:app --reload`)
+
+## Comandos
+
+Instalar dependencias
+```bash
+npm install
+```
+
+Levantar en desarrollo (http://localhost:4200)
+```bash
+npm start
+```
+
+Compilar para producción (`dist/fc-web-mvp`)
+```bash
+npm run build
+```
+
+### Conexión con la API en desarrollo
+
+`ng serve` redirige todo lo que empiece por `/api` a `http://localhost:8000`
+(`proxy.conf.json`). Por eso `environment.ts` usa la ruta relativa `/api/v1` y **no hace
+falta CORS** en desarrollo. Si la API corre en otro puerto, se cambia solo en
+`proxy.conf.json`.
+
+En producción, `environment.production.ts` define la URL de la API. Si frontend y API
+quedan en dominios distintos, el backend debe configurar CORS (y exponer
+`Content-Disposition` para las descargas).
+
+## Estructura
+
+```
+src/app/
+├── Components/                 # Componentes reutilizables (no son páginas)
+│   ├── Layout/                 # app-header, app-sidebar
+│   ├── Shared/                 # loader, 403, 404, coming-soon (provisional)
+│   └── System/<Vista>/         # Componentes propios de cada vista (tablas, modales…)
+├── Core/
+│   ├── Constants/              # roles, rutas, endpoints, etiquetas y mensajes de validación
+│   ├── Directives/             # appNumericInput, appLogoutButton
+│   ├── Guards/                 # authGuard / authMatchGuard, roleGuard, guestGuard
+│   ├── Interceptors/           # authInterceptor (Bearer + refresh automático)
+│   ├── Models/                 # Interfaces espejo de los schemas de la API
+│   │   ├── Api/                #   formatos de error
+│   │   ├── Auth/
+│   │   ├── Shared/             #   tipos y enums compartidos (OrderState, DayWeek…)
+│   │   ├── SecurityModule/
+│   │   ├── ParametersModule/
+│   │   └── CoreModule/
+│   ├── Pipes/                  # bogotaDate, cop, apiTime, orderState, daysWeek
+│   ├── Service/
+│   │   ├── generic.service.ts  # ReadOnlyService / GenericService (CRUD de la API)
+│   │   ├── Alerts/             # AlertService (SweetAlert2) y ApiAlertService (errores API)
+│   │   ├── Auth/               # AuthService, TokenStorageService, RoleRedirectService
+│   │   ├── Navigation/         # menú lateral filtrado por rol
+│   │   └── <Módulo>/           # un servicio por entidad
+│   └── Utils/                  # errores de API, fechas Bogotá, dinero, query params, descargas
+├── Views/                      # Páginas (las que aparecen en el ruteo)
+│   ├── Auth/login/
+│   └── System/                 # system-shell (layout) + system.routes.ts
+│       └── Orders/ Routes/ History/ Closure/ Admin/   # vistas por construir
+├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
+└── app.routes.ts
+```
+
+Alias de imports (`tsconfig.json`): `@core/*`, `@components/*`, `@views/*`, `@env/*`.
+
+## Convenciones
+
+### Modelos
+Mismo nombre que el schema del backend, sin sufijo para la respuesta:
+`Zone` (ZoneResponse), `ZoneCreate` (POST) y `ZoneUpdate` (PATCH, todo opcional).
+Los tipos de la API se respetan tal como llegan en el JSON:
+
+| Backend | Frontend | Ejemplo |
+|---|---|---|
+| `Decimal` | `Money` (texto) | `"12500.00"` → se muestra con el pipe `cop` |
+| `date` | `IsoDate` | `"2026-10-17"` |
+| `time` | `TimeString` | `"14:05:00"` → pipe `apiTime` |
+| `datetime` | `IsoDateTime` | → pipe `bogotaDate` |
+
+### Servicios
+Cada entidad hereda de `GenericService<TRead, TCreate, TUpdate>` (o de `ReadOnlyService`
+si la API no permite escribir) y solo declara su endpoint. Los endpoints especiales de
+cada vista (`/orders/dashboard-summary`, `/routes/cards`, `/shifts_closures/summary`…)
+se agregan como métodos del servicio de su entidad al construir la vista.
+
+### Errores de la API y alertas
+La API responde errores en **dos formatos**, y cada uno tiene su manejador en
+`ApiAlertService`:
+
+| Formato | Cuándo | Manejador |
+|---|---|---|
+| `{ detail, code, field }` | Reglas de negocio, 404, 409, 403, 401, 502 | `showBusinessError` |
+| `{ detail: [{ loc, msg, type }] }` | 422 de validación de Pydantic | `showValidationErrors` |
+
+`handleError(err)` detecta el formato y elige el manejador; los mensajes de Pydantic se
+traducen al español (`Core/Constants/validation-messages.ts`) y los campos se muestran con
+su etiqueta (`field-labels.ts`), p. ej. *Productos (renglón 2) › Cantidad: Debe ser mayor que 0.*
+
+Patrón para una acción en un componente:
+```ts
+const res = await this.apiAlert.run(this.orders.dispatch(id), { successToast: 'Pedido despachado' });
+if (res.ok) this.reload();
+```
+
+### Autenticación
+- `POST /auth/login` recibe un formulario OAuth2 (`x-www-form-urlencoded`), no JSON.
+- Los roles salen del JWT (no hay endpoint `/me`).
+- El access token vive **solo en memoria**; al recargar, `restoreSession()` lo recupera con
+  el refresh token antes del primer ruteo.
+- **Provisional:** el refresh token se guarda en `localStorage` porque la API lo devuelve en
+  el body. Cuando el backend lo mueva a cookie `httpOnly`, solo cambian
+  `TokenStorageService` y `AuthService`.
+- Un solo refresh en vuelo a la vez (la API trata dos refresh con el mismo token como robo y
+  cierra todas las sesiones).
+
+### Roles y rutas
+`roleGuard` replica la regla de la API: `ADMINISTRADOR` siempre pasa y una ruta sin
+`data.roles` queda solo para `ADMINISTRADOR`. El menú (`NavigationService`) declara los
+mismos roles que su ruta.
+
+### Fechas
+Todo "hoy" se calcula en hora de Bogotá con `todayBogota()` (`Core/Utils/date.utils.ts`),
+nunca con `new Date().toISOString()` (UTC).
+
+### Estilos
+Tailwind v4 se configura en `src/styles.css` (`@theme`). La paleta actual es
+**provisional** hasta definir la identidad visual de Foca Comercial: al recibirla se
+cambian solo los tokens `--color-brand-*` y la tipografía.
