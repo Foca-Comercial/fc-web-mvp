@@ -42,7 +42,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 	return next(request).pipe(
 		catchError((error: unknown) => {
 			const isUnauthorized = error instanceof HttpErrorResponse && error.status === 401;
-			if (!isUnauthorized || !auth.hasRefreshToken()) {
+			if (!isUnauthorized || !auth.hasSessionHint()) {
 				return throwError(() => error);
 			}
 

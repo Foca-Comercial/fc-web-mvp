@@ -7,13 +7,7 @@
 // POST /auth/login y POST /auth/refresh
 export interface TokenResponse {
 	access_token: string;
-	refresh_token: string;
 	token_type: string;
-}
-
-// Body de /auth/refresh y /auth/logout
-export interface RefreshRequest {
-	refresh_token: string;
 }
 
 // Payload del JWT: sub = id_user (texto), exp en segundos epoch

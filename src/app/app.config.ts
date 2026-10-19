@@ -31,8 +31,7 @@ export const appConfig: ApplicationConfig = {
 		provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
 		{ provide: LOCALE_ID, useValue: 'es-CO' },
 
-		// Antes del primer ruteo: si hay un refresh token guardado, recupera la sesión
-		// (el access token vive solo en memoria y se pierde al recargar la página).
+		// Antes del primer ruteo: si hay un refresh token guardado, recupera la sesión.
 		provideAppInitializer(() => firstValueFrom(inject(AuthService).restoreSession())),
 	],
 };

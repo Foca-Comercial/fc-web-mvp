@@ -41,51 +41,59 @@ export class AuthService {
 
 	// ----- Login / logout -----
 	login({ username, password }: LoginCredentials): Observable<SessionUser> {
-		const body = new HttpParams().set('username', username.trim()).set('password', password);
+		const body = new HttpParams()
+			.set('username', username.trim())
+			.set('password', password);
 
 		return this.http
 			.post<TokenResponse>(API_ENDPOINTS.auth.login, body.toString(), {
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
 			})
-			.pipe(map((tokens) => this.startSession(tokens, username.trim().toLowerCase())));
+			.pipe(
+				map((tokens) =>
+					this.startSession(tokens, username.trim().toLowerCase()),
+				),
+			);
 	}
 
 	// Revoca la sesión actual en la API. Aunque falle (red, token ya revocado),
 	// la sesión local se limpia igual.
 	logout(): Observable<void> {
-		const refreshToken = this.storage.getRefreshToken();
-		const request$ = refreshToken
-			? this.http.post<void>(API_ENDPOINTS.auth.logout, { refresh_token: refreshToken })
-			: of(undefined);
-
-		return request$.pipe(
+		return this.http.post<void>(API_ENDPOINTS.auth.logout, null).pipe(
 			catchError(() => of(undefined)),
 			map(() => undefined),
-			finalize(() => this.clearSession())
+			finalize(() => this.clearSession()),
 		);
 	}
 
 	// Cierra la sesión en todos los dispositivos (requiere access token vigente)
 	logoutAll(): Observable<void> {
-		return this.http.post<void>(API_ENDPOINTS.auth.logoutAll, {}).pipe(finalize(() => this.clearSession()));
+		return this.http
+			.post<void>(API_ENDPOINTS.auth.logoutAll, {})
+			.pipe(finalize(() => this.clearSession()));
 	}
 
-	// ----- Refresh -----
-	hasRefreshToken(): boolean {
-		return this.storage.getRefreshToken() !== null;
+	// El refresh token es una cookie httpOnly y el front no puede saber si existe. Se usa
+	// el usuario guardado como pista: si no hay, nunca hubo sesión y no vale la pena
+	// llamar a /auth/refresh (daría un 401 seguro).
+	hasSessionHint(): boolean {
+		return this.storage.getUsername() !== null;
 	}
 
 	// Devuelve el nuevo access token. Llamadas simultáneas comparten la misma petición.
 	refresh(): Observable<string> {
 		if (this.refreshInFlight$) return this.refreshInFlight$;
 
-		const refreshToken = this.storage.getRefreshToken();
-		if (!refreshToken) {
-			return throwError(() => new Error('No hay una sesión para renovar.'));
+		if (!this.hasSessionHint()) {
+			return throwError(
+				() => new Error('No hay una sesión para renovar.'),
+			);
 		}
 
 		this.refreshInFlight$ = this.http
-			.post<TokenResponse>(API_ENDPOINTS.auth.refresh, { refresh_token: refreshToken })
+			.post<TokenResponse>(API_ENDPOINTS.auth.refresh, null)
 			.pipe(
 				map((tokens) => {
 					this.startSession(tokens, this.storage.getUsername() ?? '');
@@ -96,7 +104,7 @@ export class AuthService {
 					return throwError(() => error);
 				}),
 				finalize(() => (this.refreshInFlight$ = null)),
-				shareReplay({ bufferSize: 1, refCount: false })
+				shareReplay({ bufferSize: 1, refCount: false }),
 			);
 
 		return this.refreshInFlight$;
@@ -105,11 +113,11 @@ export class AuthService {
 	// Al arrancar la app (APP_INITIALIZER): recupera la sesión si hay refresh token.
 	// Nunca falla: si no se puede, la app arranca sin sesión y los guards mandan al login.
 	restoreSession(): Observable<boolean> {
-		if (!this.hasRefreshToken()) return of(false);
+		if (!this.hasSessionHint()) return of(false);
 
 		return this.refresh().pipe(
 			map(() => true),
-			catchError(() => of(false))
+			catchError(() => of(false)),
 		);
 	}
 
@@ -137,7 +145,6 @@ export class AuthService {
 		};
 
 		this.storage.setAccessToken(tokens.access_token);
-		this.storage.setRefreshToken(tokens.refresh_token);
 		if (username) this.storage.setUsername(username);
 
 		this.session.set(user);
@@ -154,7 +161,10 @@ export class AuthService {
 	// Renovación proactiva un minuto antes de que venza el access token
 	private scheduleRefresh(expiresAt: number): void {
 		this.cancelScheduledRefresh();
-		const delay = Math.max(expiresAt - Date.now() - REFRESH_MARGIN_MS, MIN_REFRESH_DELAY_MS);
+		const delay = Math.max(
+			expiresAt - Date.now() - REFRESH_MARGIN_MS,
+			MIN_REFRESH_DELAY_MS,
+		);
 		this.refreshTimer = setTimeout(() => {
 			this.refresh().subscribe({ error: () => this.expireSession() });
 		}, delay);

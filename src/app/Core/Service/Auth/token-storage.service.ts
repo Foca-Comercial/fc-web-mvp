@@ -1,9 +1,8 @@
 // ===== ALMACENAMIENTO DE TOKENS =====
 // Dónde vive cada token (ver docs/ARQUITECTURA.md del backend, sección 8):
 // - Access token: SOLO en memoria. Se pierde al recargar y se recupera con el refresh.
-// - Refresh token: PROVISIONAL en localStorage, porque hoy la API lo devuelve en el
-//   body. Cuando el backend lo mueva a cookie httpOnly, este servicio deja de
-//   guardarlo y el navegador lo enviará solo.
+// - Refresh token: Refresh token: NO se guarda aquí. Es una cookie httpOnly que pone la API
+// y que el navegador envía solo a /auth/*; JavaScript no puede leerla (mitiga robo por XSS).
 
 import { Injectable } from '@angular/core';
 import { STORAGE_KEYS } from '@core/Constants/storage-keys';
@@ -21,15 +20,6 @@ export class TokenStorageService {
 		this.accessToken = token;
 	}
 
-	// ----- Refresh token (localStorage, provisional) -----
-	getRefreshToken(): string | null {
-		return this.read(STORAGE_KEYS.REFRESH_TOKEN);
-	}
-
-	setRefreshToken(token: string): void {
-		this.write(STORAGE_KEYS.REFRESH_TOKEN, token);
-	}
-
 	// ----- Usuario (el JWT solo trae el id, no el nombre de usuario) -----
 	getUsername(): string | null {
 		return this.read(STORAGE_KEYS.USERNAME);
@@ -41,7 +31,6 @@ export class TokenStorageService {
 
 	clear(): void {
 		this.accessToken = null;
-		this.remove(STORAGE_KEYS.REFRESH_TOKEN);
 		this.remove(STORAGE_KEYS.USERNAME);
 	}
 
