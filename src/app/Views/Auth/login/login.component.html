@@ -1,64 +1,94 @@
-<main class="flex min-h-screen items-center justify-center bg-slate-100 p-4">
-	<section class="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-		<header class="mb-6 text-center">
-			<h1 class="text-2xl font-semibold text-brand-700">Foca Comercial</h1>
-			<p class="mt-1 text-sm text-slate-500">Inicia sesión para continuar</p>
-		</header>
+<main class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-brand-100 p-4 sm:p-8">
+	<!-- Fondo de ondas (decorativo) -->
+	<img
+		src="img/login-bg.jpg"
+		alt=""
+		aria-hidden="true"
+		class="absolute inset-0 -z-10 size-full object-cover"
+		fetchpriority="high"
+	/>
 
-		@if (sessionExpired()) {
-			<p class="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">
-				Tu sesión expiró. Vuelve a iniciar sesión.
-			</p>
-		}
+	<section class="glass grid w-full max-w-3xl items-center gap-6 rounded-3xl p-6 sm:p-8 md:min-h-120 md:grid-cols-2 md:gap-8">
+		<!-- Marca -->
+		<div class="flex justify-center">
+			<img
+				src="img/logo-foca.webp"
+				width="640"
+				height="640"
+				alt="FOCA - Orden de pedidos"
+				class="w-36 drop-shadow-xl sm:w-44 md:w-full md:max-w-xs"
+			/>
+		</div>
 
-		<form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4" novalidate>
-			<div>
-				<label for="username" class="form-label">Usuario</label>
-				<input
-					id="username"
-					type="text"
-					formControlName="username"
-					autocomplete="username"
-					autocapitalize="none"
-					class="form-input"
-					[attr.aria-invalid]="invalid('username')"
-				/>
-				@if (invalid('username')) {
-					<p class="form-error">Ingresa tu usuario.</p>
-				}
-			</div>
+		<!-- Formulario -->
+		<div class="mx-auto w-full max-w-md">
+			<header class="mb-8 text-center">
+				<h1 class="text-3xl font-extrabold tracking-tight text-brand-950">Inicio de sesión</h1>
+				<p class="mt-1.5 text-sm font-medium text-brand-900/80">Orden de pedidos</p>
+			</header>
 
-			<div>
-				<label for="password" class="form-label">Contraseña</label>
-				<div class="relative">
-					<input
-						id="password"
-						[type]="showPassword() ? 'text' : 'password'"
-						formControlName="password"
-						autocomplete="current-password"
-						class="form-input pr-20"
-						[attr.aria-invalid]="invalid('password')"
-					/>
-					<button
-						type="button"
-						class="absolute inset-y-0 right-0 px-3 text-xs font-medium text-slate-500 hover:text-slate-700"
-						(click)="showPassword.set(!showPassword())"
-					>
-						{{ showPassword() ? 'Ocultar' : 'Mostrar' }}
-					</button>
-				</div>
-				@if (invalid('password')) {
-					<p class="form-error">Ingresa tu contraseña.</p>
-				}
-			</div>
-
-			@if (loginError()) {
-				<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{{ loginError() }}</p>
+			@if (sessionExpired()) {
+				<p class="mb-5 rounded-2xl border border-warning-200 bg-warning-50/90 px-4 py-2.5 text-sm font-medium text-warning-800" role="status">
+					Tu sesión expiró. Vuelve a iniciar sesión.
+				</p>
 			}
 
-			<button type="submit" class="btn-primary w-full" [disabled]="submitting()">
-				{{ submitting() ? 'Ingresando...' : 'Ingresar' }}
-			</button>
-		</form>
+			<form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-5" novalidate>
+				<div>
+					<label for="username" class="form-label ml-4">Usuario</label>
+					<input
+						id="username"
+						type="text"
+						formControlName="username"
+						autocomplete="username"
+						autocapitalize="none"
+						spellcheck="false"
+						class="glass-input"
+						[attr.aria-invalid]="invalid('username')"
+						[attr.aria-describedby]="invalid('username') ? 'username-error' : null"
+					/>
+					@if (invalid('username')) {
+						<p id="username-error" class="form-error ml-4">Ingresa tu usuario.</p>
+					}
+				</div>
+
+				<div>
+					<label for="password" class="form-label ml-4">Contraseña</label>
+					<div class="relative">
+						<input
+							id="password"
+							[type]="showPassword() ? 'text' : 'password'"
+							formControlName="password"
+							autocomplete="current-password"
+							class="glass-input pr-12"
+							[attr.aria-invalid]="invalid('password')"
+							[attr.aria-describedby]="invalid('password') ? 'password-error' : null"
+						/>
+						<button
+							type="button"
+							class="absolute inset-y-0 right-1.5 my-auto grid size-9 place-items-center rounded-full text-brand-900/70 transition hover:bg-white/60 hover:text-brand-900"
+							[attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+							[attr.aria-pressed]="showPassword()"
+							(click)="showPassword.set(!showPassword())"
+						>
+							<app-icon [name]="showPassword() ? 'eye-slash' : 'eye'" />
+						</button>
+					</div>
+					@if (invalid('password')) {
+						<p id="password-error" class="form-error ml-4">Ingresa tu contraseña.</p>
+					}
+				</div>
+
+				@if (loginError()) {
+					<p class="rounded-2xl border border-danger-200 bg-danger-50/90 px-4 py-2.5 text-sm font-medium text-danger-700" role="alert">
+						{{ loginError() }}
+					</p>
+				}
+
+				<button type="submit" class="btn-gradient mx-auto mt-2 w-full max-w-72" [disabled]="submitting()">
+					{{ submitting() ? 'Ingresando...' : 'Ingresar' }}
+				</button>
+			</form>
+		</div>
 	</section>
 </main>

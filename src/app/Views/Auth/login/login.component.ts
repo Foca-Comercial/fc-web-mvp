@@ -1,7 +1,7 @@
 // ==================================================
 // Vista: Login
 // ==================================================
-// Funcional desde ya; el diseño definitivo llega con la identidad visual.
+// Diseño con efecto glass sobre el fondo de ondas (ver .glass y .glass-input en styles.css).
 // - Valida en el cliente lo mismo que la API (usuario y contraseña obligatorios).
 // - Credenciales inválidas → 401 de la API con BusinessError: se muestra en línea,
 //   sin alerta, porque es el caso más común.
@@ -11,6 +11,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
+import { IconComponent } from '@components/Shared/icon/icon.component';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { AuthService } from '@core/Service/Auth/auth.service';
 import { RoleRedirectService } from '@core/Service/Auth/role-redirect.service';
@@ -18,7 +19,7 @@ import { parseApiError } from '@core/Utils/api-error.utils';
 
 @Component({
 	selector: 'app-login',
-	imports: [ReactiveFormsModule],
+	imports: [ReactiveFormsModule, IconComponent],
 	templateUrl: './login.component.html',
 })
 export class LoginComponent {

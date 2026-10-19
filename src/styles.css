@@ -2,73 +2,414 @@
 	Estilos globales — Tailwind CSS v4
 	==================================================
 	Tailwind v4 se configura en CSS (no hay tailwind.config.js). Los tokens del
-	bloque @theme generan utilidades: --color-brand-500 → bg-brand-500, text-brand-500…
+	bloque @theme generan utilidades: --color-brand-700 → bg-brand-700, text-brand-700…
 
-	PROVISIONAL: la paleta y tipografía son neutras hasta recibir la identidad
-	visual de Foca Comercial. Al recibirla se cambian SOLO estos tokens.
+	IDENTIDAD VISUAL (tomada de las tablas de color del cliente):
+	- Neutros ........ slate    → los de Tailwind, sin cambios (slate-50 … slate-950)
+	- Primario ....... brand    → azul corporativo (blue de Tailwind)
+	- Éxito .......... success  → "A tiempo" / "Despachado"
+	- Advertencia .... warning  → "Próximo a vencer" (< 15 min para la entrega)
+	- Acento / alerta  danger   → rojo de marca, "Retrasado", cancelar, errores
+	Siempre se usan estos nombres semánticos en los componentes (no blue-*, red-*…),
+	así un cambio de marca se hace aquí y solo aquí.
 */
+
 @import "tailwindcss";
 
 @theme {
 	/* Tipografía */
 	--font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-	/* Color de marca (placeholder: azul) */
-	--color-brand-50: oklch(0.97 0.014 254.6);
-	--color-brand-100: oklch(0.932 0.032 255.6);
-	--color-brand-200: oklch(0.882 0.059 254.1);
-	--color-brand-300: oklch(0.809 0.105 251.8);
-	--color-brand-400: oklch(0.707 0.165 254.6);
-	--color-brand-500: oklch(0.623 0.214 259.8);
-	--color-brand-600: oklch(0.546 0.245 262.9);
-	--color-brand-700: oklch(0.488 0.243 264.4);
-	--color-brand-800: oklch(0.424 0.199 265.6);
-	--color-brand-900: oklch(0.379 0.146 265.5);
+	/* Primario corporativo */
+	--color-brand-50: #eff6ff;
+	--color-brand-100: #dbeafe;
+	--color-brand-200: #bfdbfe;
+	--color-brand-300: #93c5fd;
+	--color-brand-400: #60a5fa;
+	--color-brand-500: #3b82f6;
+	--color-brand-600: #2563eb;
+	--color-brand-700: #1d4ed8;
+	--color-brand-800: #1e40af;
+	--color-brand-900: #1e3a8a;
+	--color-brand-950: #172554;
+
+	/* Éxito: a tiempo / despachado */
+	--color-success-50: #ecfdf5;
+	--color-success-100: #d1fae5;
+	--color-success-200: #a7f3d0;
+	--color-success-300: #6ee7b7;
+	--color-success-400: #34d399;
+	--color-success-500: #10b981;
+	--color-success-600: #059669;
+	--color-success-700: #047857;
+	--color-success-800: #065f46;
+	--color-success-900: #064e3b;
+	--color-success-950: #022c22;
+
+	/* Advertencia: próximo a vencer */
+	--color-warning-50: #fffbeb;
+	--color-warning-100: #fef3c7;
+	--color-warning-200: #fde68a;
+	--color-warning-300: #fcd34d;
+	--color-warning-400: #fbbf24;
+	--color-warning-500: #f59e0b;
+	--color-warning-600: #d97706;
+	--color-warning-700: #b45309;
+	--color-warning-800: #92400e;
+	--color-warning-900: #78350f;
+	--color-warning-950: #451a03;
+
+	/* Acento corporativo y alerta */
+	--color-danger-50: #fef2f2;
+	--color-danger-100: #fee2e2;
+	--color-danger-200: #fecaca;
+	--color-danger-300: #fca5a5;
+	--color-danger-400: #f87171;
+	--color-danger-500: #ef4444;
+	--color-danger-600: #dc2626;
+	--color-danger-700: #b91c1c;
+	--color-danger-800: #991b1b;
+	--color-danger-900: #7f1d1d;
+	--color-danger-950: #450a0a;
+
+	/* Fondos y sombras */
+	--color-canvas: #dbeafe;
+	--shadow-glass: 0 20px 50px -12px rgb(30 58 138 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.75);
+	--shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 4px 16px -4px rgb(30 58 138 / 0.1);
 
 	/* Layout */
 	--spacing-header: 4rem;
 	--spacing-sidebar: 16rem;
 }
 
-/* Base */
-@layer base {
-
-	html,
-	body {
-		@apply h-full;
-	}
-
-	body {
-		@apply bg-slate-50 font-sans text-slate-800 antialiased;
-	}
+/* ==================================================
+   Base del documento
+   ================================================== */
+html,
+body {
+	height: 100%;
 }
 
-/* Componentes reutilizables de bajo nivel (se ampliarán con la identidad visual).
-   En Tailwind v4 una clase de @layer components no se puede usar dentro de otro
-   @apply; por eso cada variante de botón repite la base en vez de aplicar .btn. */
-@layer components {
-	.btn-primary {
-		@apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600;
-	}
-
-	.btn-secondary {
-		@apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
-	}
-
-	.form-label {
-		@apply mb-1 block text-sm font-medium text-slate-700;
-	}
-
-	.form-input {
-		@apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
-	}
-
-	.form-error {
-		@apply mt-1 text-xs text-red-600;
-	}
-}
-
-/* SweetAlert2: hereda la tipografía de la app */
-.swal2-popup {
+body {
+	background-color: var(--color-slate-50, #f8fafc);
 	font-family: var(--font-sans);
+	color: var(--color-slate-800, #1e293b);
+	-webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+	outline: 2px solid var(--color-brand-500);
+	outline-offset: 2px;
+}
+
+/* ==================================================
+   Componentes y Botones
+   ================================================== */
+.btn-primary {
+	@apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition;
+	background-color: var(--color-brand-700);
+
+	&:hover {
+		background-color: var(--color-brand-800);
+	}
+
+	&:active {
+		background-color: var(--color-brand-950);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+}
+
+.btn-secondary {
+	@apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition;
+
+	&:hover {
+		background-color: var(--color-slate-50, #f8fafc);
+	}
+
+	&:active {
+		background-color: var(--color-slate-100, #f1f5f9);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+}
+
+.btn-danger {
+	@apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition;
+	background-color: var(--color-danger-600);
+
+	&:hover {
+		background-color: var(--color-danger-700);
+	}
+
+	&:active {
+		background-color: var(--color-danger-800);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+	}
+}
+
+.btn-gradient {
+	@apply inline-flex items-center justify-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/25 transition;
+	background: linear-gradient(to right, var(--color-brand-900), var(--color-brand-600));
+
+	&:hover {
+		filter: brightness(1.1);
+	}
+
+	&:active {
+		filter: brightness(0.95);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.6;
+		filter: none;
+	}
+}
+
+/* ==================================================
+   Formularios
+   ================================================== */
+.form-label {
+	display: block;
+	margin-bottom: 0.375rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--color-slate-700, #334155);
+}
+
+.form-error {
+	margin-top: 0.375rem;
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--color-danger-700);
+}
+
+.form-input {
+	display: block;
+	width: 100%;
+	border-radius: 0.75rem;
+	border: 1px solid var(--color-slate-300, #cbd5e1);
+	background-color: #fff;
+	padding: 0.625rem 0.875rem;
+	font-size: 0.875rem;
+	color: var(--color-slate-900, #0f172a);
+	transition: border-color 0.15s, box-shadow 0.15s;
+
+	&::placeholder {
+		color: var(--color-slate-400, #94a3b8);
+	}
+
+	&:focus {
+		border-color: var(--color-brand-500);
+		outline: none;
+		box-shadow: 0 0 0 3px rgb(59 130 246 / 0.25);
+	}
+
+	&[aria-invalid="true"] {
+		border-color: var(--color-danger-500);
+
+		&:focus {
+			box-shadow: 0 0 0 3px rgb(239 68 68 / 0.25);
+		}
+	}
+}
+
+/* ==================================================
+	Efectos Glass
+	==================================================
+*/
+.glass {
+	border: 1px solid rgb(255 255 255 / 0.6);
+	background: rgb(255 255 255 / 0.4);
+	box-shadow: var(--shadow-glass);
+	backdrop-filter: blur(24px) saturate(150%);
+}
+
+.glass-strong {
+	border: 1px solid rgb(255 255 255 / 0.7);
+	background: rgb(255 255 255 / 0.75);
+	box-shadow: var(--shadow-glass);
+	backdrop-filter: blur(24px) saturate(150%);
+}
+
+.glass-input {
+	display: block;
+	width: 100%;
+	border-radius: 9999px;
+	border: 1px solid rgb(30 58 138 / 0.35);
+	background: rgb(255 255 255 / 0.55);
+	padding: 0.75rem 1.25rem;
+	font-size: 0.875rem;
+	color: var(--color-slate-900, #0f172a);
+	backdrop-filter: blur(4px);
+	transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+
+	&::placeholder {
+		color: var(--color-slate-500, #64748b);
+	}
+
+	&:hover {
+		background: rgb(255 255 255 / 0.7);
+	}
+
+	&:focus {
+		border-color: var(--color-brand-600);
+		background: rgb(255 255 255 / 0.85);
+		outline: none;
+		box-shadow: 0 0 0 3px rgb(59 130 246 / 0.3);
+	}
+
+	&[aria-invalid="true"] {
+		border-color: var(--color-danger-500);
+
+		&:focus {
+			box-shadow: 0 0 0 3px rgb(239 68 68 / 0.25);
+		}
+	}
+}
+
+/* ==================================================
+	SweetAlert2 con la identidad de marca
+	==================================================
+	SweetAlert2 inyecta su CSS al abrir la primera alerta, así que estas reglas llevan
+	un poco más de especificidad (prefijo .swal2-container) para ganarle siempre. */
+
+/* Solo aplicar fondo oscuro y blur a modales normales, nunca a Toasts */
+.swal2-container.swal2-backdrop-show:not(:has(.swal2-toast)),
+.swal2-container.swal2-noanimation:not(:has(.swal2-toast)) {
+	background: rgb(23 37 84 / 0.4);
+	backdrop-filter: blur(3px);
+}
+
+/* Forzar que el contenedor del toast sea completamente transparente */
+.swal2-container:has(.swal2-toast) {
+	background: transparent !important;
+	backdrop-filter: none !important;
+}
+
+.swal2-container .swal2-popup {
+	font-family: var(--font-sans);
+	border-radius: 1.25rem;
+	padding: 1.75rem 1.5rem 1.5rem;
+	color: var(--color-slate-700);
+	box-shadow: 0 25px 60px -15px rgb(23 37 84 / 0.45);
+}
+
+.swal2-container .swal2-title {
+	color: var(--color-brand-950);
+	font-size: 1.25rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+.swal2-container .swal2-html-container {
+	color: var(--color-slate-600);
+	font-size: 0.95rem;
+}
+
+.swal2-container .swal2-actions {
+	gap: 0.75rem;
+}
+
+.swal2-container .swal2-styled {
+	border-radius: 0.75rem;
+	padding: 0.65rem 1.25rem;
+	font-size: 0.875rem;
+	font-weight: 600;
+	box-shadow: none;
+}
+
+.swal2-container .swal2-styled.swal2-confirm {
+	background-color: var(--color-brand-700);
+}
+
+.swal2-container .swal2-styled.swal2-confirm:hover {
+	background-color: var(--color-brand-800);
+}
+
+.swal2-container .swal2-styled.swal2-cancel {
+	background-color: #fff;
+	color: var(--color-slate-700);
+	box-shadow: inset 0 0 0 1px var(--color-slate-300);
+}
+
+.swal2-container .swal2-styled.swal2-cancel:hover {
+	background-color: var(--color-slate-50);
+}
+
+.swal2-container .swal2-styled:focus-visible {
+	box-shadow: 0 0 0 3px rgb(59 130 246 / 0.35);
+}
+
+.swal2-container .swal2-timer-progress-bar {
+	background: var(--color-brand-500);
+}
+
+/* Toasts: tarjeta blanca compacta con borde de color según el tipo */
+.swal2-container .swal2-popup.swal2-toast {
+	border-radius: 0.875rem;
+	padding: 0.75rem 1rem;
+	box-shadow: 0 10px 30px -8px rgb(23 37 84 / 0.35);
+	background: rgb(255 255 255 / 0.96);
+	backdrop-filter: blur(8px);
+}
+
+.swal2-container .swal2-toast .swal2-title {
+	color: var(--color-slate-800);
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+/* Iconos con la paleta semántica */
+.swal2-icon.swal2-success {
+	border-color: var(--color-success-500);
+	color: var(--color-success-500);
+}
+
+.swal2-icon.swal2-success [class^="swal2-success-line"] {
+	background-color: var(--color-success-500);
+}
+
+.swal2-icon.swal2-success .swal2-success-ring {
+	border-color: rgb(16 185 129 / 0.3);
+}
+
+.swal2-icon.swal2-error {
+	border-color: var(--color-danger-400);
+	color: var(--color-danger-500);
+}
+
+.swal2-icon.swal2-error [class^="swal2-x-mark-line"] {
+	background-color: var(--color-danger-500);
+}
+
+.swal2-icon.swal2-warning {
+	border-color: var(--color-warning-300);
+	color: var(--color-warning-500);
+}
+
+.swal2-icon.swal2-info {
+	border-color: var(--color-brand-300);
+	color: var(--color-brand-500);
+}
+
+.swal2-icon.swal2-question {
+	border-color: var(--color-brand-300);
+	color: var(--color-brand-500);
+}
+
+/* Herramienta */
+.border-t {
+	border: solid 1rem red !important
 }
