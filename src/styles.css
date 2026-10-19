@@ -1,14 +1,11 @@
-/* You can add global styles to this file, and also import other style files */
-
-@import 'tailwindcss';
 /* ==================================================
-   Estilos globales — Tailwind CSS v4
-   ==================================================
-   Tailwind v4 se configura en CSS (no hay tailwind.config.js). Los tokens del
-   bloque @theme generan utilidades: --color-brand-500 → bg-brand-500, text-brand-500…
+	Estilos globales — Tailwind CSS v4
+	==================================================
+	Tailwind v4 se configura en CSS (no hay tailwind.config.js). Los tokens del
+	bloque @theme generan utilidades: --color-brand-500 → bg-brand-500, text-brand-500…
 
-   PROVISIONAL: la paleta y tipografía son neutras hasta recibir la identidad
-   visual de Foca Comercial. Al recibirla se cambian SOLO estos tokens.
+	PROVISIONAL: la paleta y tipografía son neutras hasta recibir la identidad
+	visual de Foca Comercial. Al recibirla se cambian SOLO estos tokens.
 */
 @import "tailwindcss";
 

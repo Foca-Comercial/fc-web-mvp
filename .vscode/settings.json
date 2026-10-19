@@ -1,0 +1,30 @@
+{
+  // Oculta archivos o carpetas del explorador de archivos de VSCode, sin borrarlos del proyecto.
+  "files.exclude": {
+    // Configuración para Angular
+    "node_modules/": true,
+    ".angular/": true,
+    "dist/": true,
+    ".editorconfig": true,
+    "angular.json": true,
+    ".postcssrc.json": true,
+    "proxy.conf.json": true,
+    "package-lock.json": true,
+    "package.json": true,
+    "tsconfig.app.json": true,
+    "tsconfig.json": true,
+    "tsconfig.spec.json": true,
+  },
+
+  // Evita que ciertas carpetas o archivos aparezcan cuando haces una búsqueda global en VSCode (Ctrl+Shift+F).
+  "search.exclude": {
+    "**/node_modules": true, // Evita que el buscador busque dentro de node_modules
+    "**/dist": true, // No busca en la carpeta de build
+    "**/build": true, // Igual, por si se llama "build"
+    "**/*.min.*": true, // No busca en archivos minificados
+    "**/*.map": true // No busca en archivos .map
+  },
+
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

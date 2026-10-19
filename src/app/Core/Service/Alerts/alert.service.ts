@@ -1,10 +1,20 @@
 // ===== SERVICIO DE ALERTAS (SweetAlert2) =====
 // Envoltorio único de SweetAlert2: alertas, confirmaciones, toasts y loader.
 // No sabe nada de la API; los errores HTTP los traduce ApiAlertService, que usa este.
-// La apariencia (colores, botones) se ajustará en `baseOptions` con la identidad visual.
+// La apariencia (colores, botones) se ajustará en `Alert` con la identidad visual.
 
 import { Injectable } from '@angular/core';
 import Swal, { SweetAlertIcon, SweetAlertOptions, SweetAlertPosition, SweetAlertResult } from 'sweetalert2';
+
+// Opciones comunes a todas las alertas. Se usa Swal.mixin en vez de un objeto con
+// spread: SweetAlertOptions es una unión discriminada por `input` y TypeScript no
+// acepta el spread de dos uniones como una sola.
+const Alert = Swal.mixin({
+	confirmButtonText: 'Aceptar',
+	cancelButtonText: 'Cancelar',
+	reverseButtons: true,
+	focusCancel: false,
+});
 
 export interface ConfirmOptions {
 	title: string;
@@ -18,14 +28,6 @@ export interface ConfirmOptions {
 
 @Injectable({ providedIn: 'root' })
 export class AlertService {
-	// Opciones comunes a todas las alertas
-	private readonly baseOptions: SweetAlertOptions = {
-		confirmButtonText: 'Aceptar',
-		cancelButtonText: 'Cancelar',
-		reverseButtons: true,
-		focusCancel: false,
-	};
-
 	// ----- ALERTAS BÁSICAS -----
 	success(title: string, text = ''): Promise<SweetAlertResult> {
 		return this.fire({ title, text, icon: 'success' });
@@ -64,8 +66,15 @@ export class AlertService {
 		return result.isConfirmed;
 	}
 
-	confirmDelete(text = 'Esta acción no se puede deshacer.'): Promise<boolean> {
-		return this.confirm({ title: '¿Estás seguro?', text, confirmText: 'Sí, eliminar', danger: true });
+	confirmDelete(
+		text = 'Esta acción no se puede deshacer.',
+	): Promise<boolean> {
+		return this.confirm({
+			title: '¿Estás seguro?',
+			text,
+			confirmText: 'Sí, eliminar',
+			danger: true,
+		});
 	}
 
 	confirmLogout(): Promise<boolean> {
@@ -82,7 +91,12 @@ export class AlertService {
 	// Pide un texto; devuelve null si se canceló
 	async prompt(
 		title: string,
-		options: { text?: string; placeholder?: string; value?: string; validator?: (value: string) => string | null } = {}
+		options: {
+			text?: string;
+			placeholder?: string;
+			value?: string;
+			validator?: (value: string) => string | null;
+		} = {},
 	): Promise<string | null> {
 		const result = await this.fire({
 			title,
@@ -91,16 +105,23 @@ export class AlertService {
 			inputPlaceholder: options.placeholder,
 			inputValue: options.value ?? '',
 			showCancelButton: true,
-			inputValidator: (value: string) => (options.validator ? options.validator(value) : value ? null : 'Este campo es obligatorio.'),
+			inputValidator: (value: string) =>
+				options.validator
+					? options.validator(value)
+					: value
+						? null
+						: 'Este campo es obligatorio.',
 		});
 		return result.isConfirmed ? (result.value as string) : null;
 	}
 
 	// ----- LOADER -----
 	// Bloquea la pantalla mientras se procesa una acción
-	showLoading(title = 'Procesando...', text = 'Por favor espera un momento'): void {
-		void Swal.fire({
-			...this.baseOptions,
+	showLoading(
+		title = 'Procesando...',
+		text = 'Por favor espera un momento',
+	): void {
+		void Alert.fire({
 			title,
 			text,
 			allowOutsideClick: false,
@@ -116,7 +137,12 @@ export class AlertService {
 
 	// ----- TOASTS -----
 	// Aviso no intrusivo en una esquina
-	toast(title: string, icon: SweetAlertIcon = 'success', position: SweetAlertPosition = 'top-end', timer = 3000): void {
+	toast(
+		title: string,
+		icon: SweetAlertIcon = 'success',
+		position: SweetAlertPosition = 'top-end',
+		timer = 3000,
+	): void {
 		void Swal.fire({
 			toast: true,
 			title,
@@ -133,6 +159,6 @@ export class AlertService {
 	}
 
 	private fire(options: SweetAlertOptions): Promise<SweetAlertResult> {
-		return Swal.fire({ ...this.baseOptions, ...options } as SweetAlertOptions);
+		return Alert.fire(options);
 	}
 }

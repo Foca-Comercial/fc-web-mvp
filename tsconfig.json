@@ -14,19 +14,18 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "preserve",
-    "baseUrl": "./",
     "paths": {
       "@core/*": [
-        "src/app/Core/*"
+        "./src/app/Core/*"
       ],
       "@components/*": [
-        "src/app/Components/*"
+        "./src/app/Components/*"
       ],
       "@views/*": [
-        "src/app/Views/*"
+        "./src/app/Views/*"
       ],
       "@env/*": [
-        "src/environments/*"
+        "./src/environments/*"
       ]
     }
   },
