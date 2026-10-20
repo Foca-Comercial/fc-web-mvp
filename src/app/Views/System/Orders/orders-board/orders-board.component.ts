@@ -1,0 +1,226 @@
+// ==================================================
+// Vista: Tablero de despachos
+// ==================================================
+// Pedidos del día en dos pestañas (pendientes / despachados). La API entrega el día
+// completo sin paginar, así que la búsqueda, los filtros y la paginación se hacen aquí
+// (ver order-board.utils). Se refresca solo cada minuto, sin molestar con alertas.
+//
+// Paso 5a: lista, filtros y detalle de solo lectura. Las acciones por fila (asignar
+// domiciliario, despachar, entregar) se suman en el paso 5b.
+
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { forkJoin, firstValueFrom } from 'rxjs';
+
+import { DataTableComponent } from '@components/Shared/data-table/data-table.component';
+import { EmptyStateComponent } from '@components/Shared/empty-state/empty-state.component';
+import { FilterSelectComponent } from '@components/Shared/filter-select/filter-select.component';
+import { IconButtonComponent } from '@components/Shared/icon-button/icon-button.component';
+import { IconComponent } from '@components/Shared/icon/icon.component';
+import { PaginationComponent } from '@components/Shared/pagination/pagination.component';
+import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
+import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
+import { TabItem, TabsComponent } from '@components/Shared/tabs/tabs.component';
+import { OrderDetailModalComponent } from '@components/System/Orders/order-detail-modal/order-detail-modal.component';
+import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
+import { OrderSummary } from '@core/Models/CoreModule/order.model';
+import { OrderState } from '@core/Models/Shared/api-types.model';
+import { ApiTimePipe } from '@core/Pipes/api-time.pipe';
+import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
+import { AlertService } from '@core/Service/Alerts/alert.service';
+import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
+import { ClockService } from '@core/Service/Clock/clock.service';
+import { OrderService } from '@core/Service/CoreModule/order.service';
+import {
+	BOARD_PAGE_SIZE,
+	BoardFilters,
+	DISPATCHED_TAB_STATUSES,
+	PENDING_TAB_STATUSES,
+	driverOptions,
+	filterOrders,
+	paginate,
+	statusOptions,
+	totalPages,
+	zoneOptions,
+} from '@core/Utils/order-board.utils';
+
+type BoardTab = 'pending' | 'dispatched';
+type LoadMode = 'initial' | 'manual' | 'silent';
+
+// Cada cuánto se vuelve a pedir el tablero sin que el usuario haga nada
+const AUTO_REFRESH_MS = 60_000;
+
+@Component({
+	selector: 'app-orders-board',
+	imports: [
+		DataTableComponent,
+		EmptyStateComponent,
+		FilterSelectComponent,
+		IconButtonComponent,
+		IconComponent,
+		PaginationComponent,
+		SearchInputComponent,
+		TableSkeletonComponent,
+		TabsComponent,
+		OrderDetailModalComponent,
+		OrderStatusBadgeComponent,
+		ApiTimePipe,
+		BogotaDatePipe,
+	],
+	changeDetection: ChangeDetectionStrategy.OnPush,
+	host: { '(document:visibilitychange)': 'onVisibilityChange()' },
+	templateUrl: './orders-board.component.html',
+})
+export class OrdersBoardComponent {
+	private readonly orders = inject(OrderService);
+	private readonly apiAlert = inject(ApiAlertService);
+	private readonly alert = inject(AlertService);
+	protected readonly clock = inject(ClockService);
+
+	// ----- Datos -----
+	private readonly pendingRows = signal<OrderSummary[]>([]);
+	private readonly dispatchedRows = signal<OrderSummary[]>([]);
+	protected readonly loading = signal(true); // solo la primera carga (muestra skeleton)
+	protected readonly refreshing = signal(false); // actualización pedida con el botón
+	protected readonly loadFailed = signal(false); // la primera carga falló: no hay nada que mostrar
+	protected readonly stale = signal(false); // la última actualización falló: se ven datos viejos
+	protected readonly lastUpdated = signal<Date | null>(null);
+	private inFlight = false;
+
+	// ----- Pestañas y filtros -----
+	protected readonly tab = signal<BoardTab>('pending');
+	protected readonly search = signal('');
+	protected readonly zone = signal('');
+	protected readonly status = signal('');
+	protected readonly driver = signal('');
+	protected readonly selectedId = signal<number | null>(null);
+
+	protected readonly tabs = computed<TabItem[]>(() => [
+		{ id: 'pending', label: 'Pedidos pendientes', count: this.pendingRows().length },
+		{ id: 'dispatched', label: 'Pedidos despachados', count: this.dispatchedRows().length },
+	]);
+
+	private readonly activeRows = computed(() => (this.tab() === 'pending' ? this.pendingRows() : this.dispatchedRows()));
+	private readonly filters = computed<BoardFilters>(() => ({
+		search: this.search(),
+		zone: this.zone(),
+		status: this.status(),
+		driver: this.driver(),
+	}));
+
+	protected readonly zoneOptions = computed(() => zoneOptions(this.activeRows()));
+	protected readonly driverOptions = computed(() => driverOptions(this.activeRows()));
+	protected readonly statusOptions = computed(() =>
+		statusOptions(this.tab() === 'pending' ? PENDING_TAB_STATUSES : DISPATCHED_TAB_STATUSES)
+	);
+	protected readonly hasFilters = computed(() => Object.values(this.filters()).some(Boolean));
+
+	// Depende de `clock.now()`: el filtro de Estado (Próximo / Retrasado) se reevalúa con el reloj
+	private readonly filtered = computed(() => filterOrders(this.activeRows(), this.filters(), this.clock.now()));
+	protected readonly pages = computed(() => totalPages(this.filtered().length));
+
+	// Vuelve a la página 1 al cambiar de pestaña o de filtros; si el refresco deja menos
+	// páginas que la actual, se queda en la última
+	protected readonly page = linkedSignal<{ key: string; pages: number }, number>({
+		source: () => ({ key: JSON.stringify([this.tab(), this.filters()]), pages: this.pages() }),
+		computation: (source, previous) =>
+			previous && previous.source.key === source.key ? Math.min(previous.value, source.pages) : 1,
+	});
+
+	protected readonly visibleRows = computed(() => paginate(this.filtered(), this.page()));
+	protected readonly columnCount = 7;
+	protected readonly OrderState = OrderState;
+	protected readonly summary = computed(() => {
+		const total = this.filtered().length;
+		if (total === 0) return '';
+		const from = (this.page() - 1) * BOARD_PAGE_SIZE + 1;
+		const to = Math.min(this.page() * BOARD_PAGE_SIZE, total);
+		return `Mostrando ${from}–${to} de ${total} ${total === 1 ? 'pedido' : 'pedidos'}`;
+	});
+
+	protected readonly dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+	protected readonly timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+
+	constructor() {
+		void this.load('initial');
+
+		const timer = setInterval(() => {
+			if (!document.hidden) void this.load('silent');
+		}, AUTO_REFRESH_MS);
+		inject(DestroyRef).onDestroy(() => clearInterval(timer));
+
+		// Si tras un refresco la zona o el domiciliario elegidos ya no existen, se limpian:
+		// si no, el <select> mostraría "Todas" mientras la tabla sigue filtrada
+		effect(() => {
+			const zone = this.zone();
+			if (zone && !this.zoneOptions().some((option) => option.value === zone)) this.zone.set('');
+		});
+		effect(() => {
+			const driver = this.driver();
+			if (driver && !this.driverOptions().some((option) => option.value === driver)) this.driver.set('');
+		});
+	}
+
+	// ----- Carga -----
+	protected refresh(): void {
+		void this.load('manual');
+	}
+
+	// Al volver a la pestaña del navegador, se actualiza si los datos ya tienen más de un minuto
+	protected onVisibilityChange(): void {
+		const last = this.lastUpdated();
+		if (!document.hidden && last && Date.now() - last.getTime() >= AUTO_REFRESH_MS) void this.load('silent');
+	}
+
+	private async load(mode: LoadMode): Promise<void> {
+		if (this.inFlight) return;
+		this.inFlight = true;
+		if (mode === 'manual') this.refreshing.set(true);
+
+		try {
+			const [pending, dispatched] = await firstValueFrom(
+				forkJoin([this.orders.getDashboardSummary(), this.orders.getDispatchedSummary()])
+			);
+			this.pendingRows.set(pending);
+			this.dispatchedRows.set(dispatched);
+			this.lastUpdated.set(new Date());
+			this.loadFailed.set(false);
+			this.stale.set(false);
+		} catch (error) {
+			if (mode === 'initial') this.loadFailed.set(true);
+			else this.stale.set(true);
+			if (mode === 'silent') return;
+			await this.apiAlert.handleError(error, 'No se pudo cargar el tablero');
+		} finally {
+			this.inFlight = false;
+			this.loading.set(false);
+			this.refreshing.set(false);
+		}
+	}
+
+	// ----- Interacción -----
+	protected changeTab(id: string): void {
+		this.tab.set(id as BoardTab);
+		// Los estados cambian de una pestaña a otra
+		this.status.set('');
+	}
+
+	protected clearFilters(): void {
+		this.search.set('');
+		this.zone.set('');
+		this.status.set('');
+		this.driver.set('');
+	}
+
+	protected retry(): void {
+		this.loading.set(true);
+		void this.load('initial');
+	}
+
+	protected openDetail(row: OrderSummary): void {
+		this.selectedId.set(row.id_order);
+	}
+
+	protected newOrder(): void {
+		this.alert.toast('El registro de pedidos se habilita en el siguiente paso', 'info');
+	}
+}

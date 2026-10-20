@@ -408,8 +408,3 @@ body {
 	border-color: var(--color-brand-300);
 	color: var(--color-brand-500);
 }
-
-/* Herramienta */
-.border-t {
-	border: solid 1rem red !important
-}

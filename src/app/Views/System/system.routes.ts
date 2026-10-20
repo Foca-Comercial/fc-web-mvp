@@ -21,8 +21,9 @@ export const SYSTEM_ROUTES: Routes = [
 		children: [
 			{
 				path: 'pedidos',
-				title: 'Pedidos · Foca Comercial',
-				component: ComingSoonComponent,
+				title: 'Tablero de despachos · Foca Comercial',
+				loadComponent: () =>
+					import('./Orders/orders-board/orders-board.component').then((m) => m.OrdersBoardComponent),
 				canActivate: [roleGuard],
 				data: { roles: MANAGER, title: 'Pedidos' },
 			},

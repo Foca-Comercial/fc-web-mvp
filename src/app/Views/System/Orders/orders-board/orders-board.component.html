@@ -1,0 +1,162 @@
+<section class="space-y-2">
+	<h1 class="sr-only">Tablero de despachos del {{ clock.now() | bogotaDate: dateOptions }}</h1>
+
+	<!-- Búsqueda, filtros y acciones -->
+	<div class="rounded-2xl bg-white p-4 shadow-card">
+		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.6fr_1fr_1fr_1fr_auto]">
+			<app-search-input placeholder="Buscar N° pedido o cliente" [(value)]="search" />
+			<app-filter-select label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
+			<app-filter-select label="Estado" allLabel="Todos los estados" [options]="statusOptions()" [(value)]="status" />
+			<app-filter-select label="Domiciliario" allLabel="Todos" [options]="driverOptions()" [(value)]="driver" />
+			<div class="flex items-center gap-2 sm:col-span-2 xl:col-span-1">
+				<button
+					app-icon-button
+					icon="arrow-path"
+					label="Actualizar tablero"
+					[disabled]="refreshing() || loading()"
+					(click)="refresh()"
+				></button>
+				<button type="button" class="btn-primary flex-1 whitespace-nowrap" (click)="newOrder()">
+					<app-icon name="plus" size="size-4" />
+					Nuevo pedido
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Pestañas + tarjeta -->
+	<div>
+		<app-tabs [tabs]="tabs()" [selected]="tab()" (selectedChange)="changeTab($event)" idPrefix="board-tab" />
+
+		<div
+			class="rounded-b-2xl bg-white shadow-card"
+			role="tabpanel"
+			[id]="'board-tab-panel-' + tab()"
+			[attr.aria-labelledby]="'board-tab-' + tab()"
+		>
+			<app-data-table>
+				<table>
+					<caption class="sr-only">
+						{{ tab() === 'pending' ? 'Pedidos pendientes del día' : 'Pedidos despachados del día' }}
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">ID</th>
+							<th scope="col">Hora</th>
+							<th scope="col">Cliente y zona</th>
+							<th scope="col">Producto</th>
+							<th scope="col">Domiciliario</th>
+							<th scope="col">Estado</th>
+							<th scope="col">Acciones</th>
+						</tr>
+					</thead>
+
+					@if (loading()) {
+						<tbody app-table-skeleton [rows]="8" [columns]="columnCount"></tbody>
+					} @else {
+						<tbody>
+							@for (row of visibleRows(); track row.id_order) {
+								<tr>
+									<td class="font-bold tabular-nums text-brand-950">{{ row.purchase_order }}</td>
+									<td class="whitespace-nowrap">
+										<span class="block font-bold tabular-nums text-slate-900">{{ row.creation_time | apiTime }}</span>
+									</td>
+									<td>
+										<span class="block font-bold text-slate-900">{{ row.client_name }}</span>
+										<span class="block text-xs text-slate-500">{{ row.zone_name }}</span>
+									</td>
+									<td>
+										<span class="mx-auto block max-w-52 truncate font-bold text-slate-900" [title]="row.product_codes">
+											{{ row.product_codes }}
+										</span>
+										<span class="block text-xs text-slate-500">Cantidad total: {{ row.total_quantity }}</span>
+									</td>
+									<td>
+										@if (row.driver_code) {
+											<span class="block font-bold text-slate-900">{{ row.driver_code }}</span>
+											<span class="block text-xs text-slate-500">{{ row.driver_name }}</span>
+										} @else {
+											<span class="block font-bold text-slate-900">No asignado</span>
+											<app-icon name="exclamation-triangle" size="size-4" class="text-warning-500" />
+										}
+									</td>
+									<td>
+										<app-order-status-badge [state]="row.state" [estimatedDelivery]="row.estimated_delivery" />
+										@if (row.estimated_delivery && row.state === OrderState.PENDING) {
+											<span class="mt-1 block text-xs tabular-nums text-slate-500">
+												Entrega {{ row.estimated_delivery | apiTime }}
+											</span>
+										}
+									</td>
+									<td>
+										<div class="flex items-center justify-center gap-2">
+											<button
+												app-icon-button
+												icon="eye"
+												[label]="'Ver detalle del pedido ' + row.purchase_order"
+												(click)="openDetail(row)"
+											></button>
+										</div>
+									</td>
+								</tr>
+							}
+						</tbody>
+					}
+				</table>
+			</app-data-table>
+
+			<!-- Sin datos / error -->
+			@if (!loading()) {
+				@if (loadFailed()) {
+					<app-empty-state
+						icon="exclamation-triangle"
+						title="No se pudo cargar el tablero"
+						description="Revisa tu conexión e inténtalo de nuevo."
+					>
+						<button type="button" class="btn-primary" (click)="retry()">Reintentar</button>
+					</app-empty-state>
+				} @else if (visibleRows().length === 0) {
+					@if (hasFilters()) {
+						<app-empty-state
+							icon="magnifying-glass"
+							title="Ningún pedido coincide con la búsqueda"
+							description="Prueba con otros datos o quita los filtros."
+						>
+							<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+						</app-empty-state>
+					} @else if (tab() === 'pending') {
+						<app-empty-state title="No hay pedidos pendientes" description="Los nuevos pedidos aparecerán aquí.">
+							<button type="button" class="btn-primary" (click)="newOrder()">
+								<app-icon name="plus" size="size-4" />
+								Nuevo pedido
+							</button>
+						</app-empty-state>
+					} @else {
+						<app-empty-state
+							title="Aún no hay pedidos despachados"
+							description="Cuando despaches un pedido pasará a esta lista."
+						/>
+					}
+				}
+			}
+
+			<!-- Pie: conteo, hora de actualización y paginación -->
+			<div class="px-4 pb-2 sm:px-6">
+				<p class="flex flex-wrap items-center justify-center gap-x-3 pt-3 text-xs text-slate-500" aria-live="polite">
+					@if (summary()) {
+						<span>{{ summary() }}</span>
+					}
+					@if (lastUpdated(); as updatedAt) {
+						<span>Actualizado a las {{ updatedAt | bogotaDate: timeOptions }}</span>
+					}
+					@if (stale()) {
+						<span class="font-semibold text-warning-700">No se pudo actualizar</span>
+					}
+				</p>
+				<app-pagination [totalPages]="pages()" [(page)]="page" />
+			</div>
+		</div>
+	</div>
+</section>
+
+<app-order-detail-modal [orderId]="selectedId()" (closed)="selectedId.set(null)" />

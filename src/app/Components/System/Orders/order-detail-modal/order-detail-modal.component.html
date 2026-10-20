@@ -1,0 +1,104 @@
+<app-modal [title]="title()" [open]="orderId() !== null" (openChange)="onOpenChange($event)" maxWidth="max-w-3xl">
+	@let state = detail();
+	@if (state.status === 'ready') {
+		@let order = state.order;
+
+		<div class="mb-5 flex flex-wrap items-center gap-3">
+			<app-order-status-badge [state]="order.state" [estimatedDelivery]="order.estimated_delivery" />
+			<span class="text-sm text-slate-500">
+				Creado a las {{ order.creation_datetime | bogotaDate: timeOnly }}
+			</span>
+		</div>
+
+		<dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Cliente</dt>
+				<dd class="mt-0.5 font-semibold text-slate-900">{{ order.client_name }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Teléfono</dt>
+				<dd class="mt-0.5 text-slate-800">{{ order.client_phone || '—' }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Dirección</dt>
+				<dd class="mt-0.5 text-slate-800">{{ order.client_address || '—' }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Barrio · Zona</dt>
+				<dd class="mt-0.5 text-slate-800">{{ order.neighborhood_name }} · {{ order.zone_name }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Entrega estimada</dt>
+				<dd class="mt-0.5 text-slate-800">{{ (order.estimated_delivery | apiTime) || 'Sin hora definida' }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Despachado</dt>
+				<dd class="mt-0.5 text-slate-800">{{ (order.dispatch_time | apiTime) || 'Aún no' }}</dd>
+			</div>
+			<div class="sm:col-span-2">
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Domiciliario</dt>
+				<dd class="mt-0.5 text-slate-800">
+					@if (order.driver_name) {
+						{{ order.driver_name }}
+						<span class="text-slate-500">({{ order.driver_code }})</span>
+					} @else {
+						Sin asignar
+					}
+				</dd>
+			</div>
+		</dl>
+
+		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Productos</h3>
+		<div class="overflow-x-auto rounded-xl border border-slate-200">
+			<table class="w-full min-w-120 border-collapse text-sm">
+				<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
+					<tr>
+						<th class="px-4 py-2.5 text-left font-bold">Producto</th>
+						<th class="px-4 py-2.5 text-right font-bold">Cant.</th>
+						<th class="px-4 py-2.5 text-right font-bold">Precio</th>
+						<th class="px-4 py-2.5 text-right font-bold">Subtotal</th>
+					</tr>
+				</thead>
+				<tbody>
+					@for (item of order.items; track item.id_order_detail) {
+						<tr class="border-t border-slate-200">
+							<td class="px-4 py-2.5">
+								<span class="font-semibold text-slate-900">{{ item.product_code }}</span>
+								<span class="text-slate-500"> · {{ item.product_name }}</span>
+							</td>
+							<td class="px-4 py-2.5 text-right tabular-nums">{{ item.cant }}</td>
+							<td class="px-4 py-2.5 text-right tabular-nums">{{ item.unit_price | cop }}</td>
+							<td class="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-900">{{ item.subtotal | cop }}</td>
+						</tr>
+					}
+				</tbody>
+				<tfoot>
+					<tr class="border-t-2 border-slate-300 bg-slate-50">
+						<td colspan="3" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wide text-slate-600">Total</td>
+						<td class="px-4 py-3 text-right text-base font-bold tabular-nums text-brand-950">{{ order.order_total | cop }}</td>
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+	} @else if (state.status === 'error') {
+		<div class="flex flex-col items-center gap-3 py-8 text-center" role="alert">
+			<p class="max-w-sm text-sm text-slate-600">{{ state.message }}</p>
+			<button type="button" class="btn-secondary" (click)="retry()">Reintentar</button>
+		</div>
+	} @else {
+		<div class="space-y-4" aria-busy="true" aria-label="Cargando detalle">
+			<app-skeleton class="h-5 w-40 rounded-md" />
+			<div class="grid gap-4 sm:grid-cols-2">
+				<app-skeleton class="h-10 w-full rounded-md" />
+				<app-skeleton class="h-10 w-full rounded-md" />
+				<app-skeleton class="h-10 w-full rounded-md" />
+				<app-skeleton class="h-10 w-full rounded-md" />
+			</div>
+			<app-skeleton class="h-32 w-full rounded-xl" />
+		</div>
+	}
+
+	<div modal-footer class="flex justify-end">
+		<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
+	</div>
+</app-modal>
