@@ -81,6 +81,7 @@ export interface OrderSummary {
 	id_order: number;
 	purchase_order: string;
 	creation_time: string; // "HH:MM" en Bogotá
+	estimated_delivery: TimeString | null; // base de "Próximo" / "Retrasado" (ver delivery-status.utils)
 	client_name: string;
 	zone_name: string;
 	product_codes: string;
