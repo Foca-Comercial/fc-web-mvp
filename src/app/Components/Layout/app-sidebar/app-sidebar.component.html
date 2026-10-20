@@ -1,24 +1,53 @@
-<!-- Fondo oscuro en móvil cuando el menú está abierto -->
+<!-- Fondo oscurecido: solo en móvil, con el menú abierto -->
 @if (nav.sidebarOpen()) {
-	<div class="fixed inset-0 z-20 bg-slate-900/40 lg:hidden" aria-hidden="true" (click)="nav.closeSidebar()"></div>
+	<div class="fixed inset-0 z-20 bg-brand-950/40 backdrop-blur-[2px] lg:hidden" aria-hidden="true" (click)="nav.closeSidebar()"></div>
 }
 
 <aside
-	class="fixed bottom-0 left-0 top-header z-20 w-sidebar border-r border-slate-200 bg-white transition-transform lg:translate-x-0"
+	id="app-sidebar"
+	class="fixed bottom-0 left-0 top-header z-20 w-sidebar max-w-[85vw] overflow-y-auto border-r border-slate-200 bg-white transition-transform duration-300 ease-out"
 	[class.-translate-x-full]="!nav.sidebarOpen()"
 	[class.translate-x-0]="nav.sidebarOpen()"
+	[attr.inert]="nav.sidebarOpen() ? null : ''"
 >
-	<nav class="flex flex-col gap-1 p-3" aria-label="Menú principal">
-		@for (item of nav.items(); track item.id) {
-			<a
-				[routerLink]="item.route"
-				routerLinkActive="bg-brand-50 text-brand-700"
-				#rla="routerLinkActive"
-				[attr.aria-current]="rla.isActive ? 'page' : null"
-				class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
-			>
-				{{ item.label }}
-			</a>
+	<nav class="flex flex-col px-4 py-6" aria-label="Menú principal">
+		@for (section of nav.sections(); track section.id; let first = $first) {
+			@if (!first) {
+				<hr class="my-4 border-slate-200" />
+			}
+
+			<p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{{ section.label }}</p>
+
+			<ul class="flex flex-col gap-1">
+				@for (item of section.items; track item.id) {
+					<li>
+						@if (item.route; as route) {
+							<a
+								[routerLink]="route"
+								routerLinkActive="bg-brand-100 text-brand-900 shadow-[inset_3px_0_0_var(--color-brand-700)]"
+								#rla="routerLinkActive"
+								[attr.aria-current]="rla.isActive ? 'page' : null"
+								class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-brand-50 hover:text-brand-900"
+							>
+								<app-icon
+									[name]="item.icon"
+									[class]="rla.isActive ? 'text-brand-800' : 'text-slate-500 group-hover:text-brand-700'"
+								/>
+								{{ item.label }}
+							</a>
+						} @else {
+							<button
+								type="button"
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-brand-50 hover:text-brand-900"
+								(click)="openHelp()"
+							>
+								<app-icon [name]="item.icon" class="text-slate-500 group-hover:text-brand-700" />
+								{{ item.label }}
+							</button>
+						}
+					</li>
+				}
+			</ul>
 		}
 	</nav>
 </aside>

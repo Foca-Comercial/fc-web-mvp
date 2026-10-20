@@ -1,26 +1,62 @@
-<header class="fixed inset-x-0 top-0 z-30 flex h-header items-center justify-between border-b border-slate-200 bg-white px-4">
-	<div class="flex items-center gap-3">
+<header
+	class="fixed inset-x-0 top-0 z-30 flex h-header items-center justify-between gap-4 border-b border-slate-200/80 bg-white/85 px-4 shadow-sm backdrop-blur-md sm:px-6"
+>
+	<div class="flex min-w-0 items-center gap-3">
 		<button
 			type="button"
-			class="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
-			aria-label="Abrir menú"
+			class="grid size-10 shrink-0 place-items-center rounded-xl text-slate-600 transition hover:bg-brand-50 hover:text-brand-800"
+			[attr.aria-label]="nav.sidebarOpen() ? 'Ocultar menú' : 'Mostrar menú'"
+			aria-controls="app-sidebar"
 			[attr.aria-expanded]="nav.sidebarOpen()"
 			(click)="nav.toggleSidebar()"
 		>
-			<svg class="size-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-				<path d="M3 5h14v2H3V5Zm0 4h14v2H3V9Zm0 4h14v2H3v-2Z" />
-			</svg>
+			<app-icon name="bars-3" size="size-6" />
 		</button>
-		<span class="text-lg font-semibold text-brand-700">Foca Comercial</span>
+
+		<a routerLink="/" class="flex min-w-0 items-center gap-2.5 rounded-xl">
+			<img src="img/logo-foca-sm.webp" width="160" height="160" alt="" class="size-10 shrink-0" />
+			<span class="text-2xl font-extrabold tracking-wide text-danger-600">F<span class="text-brand-900">O</span>CA</span>
+			<span class="hidden truncate text-sm font-semibold uppercase tracking-wider text-brand-900 sm:inline">
+				<span class="mr-2 text-slate-300" aria-hidden="true">-</span>Orden de pedidos
+			</span>
+		</a>
 	</div>
 
 	@if (auth.currentUser(); as user) {
-		<div class="flex items-center gap-3">
-			<div class="hidden text-right sm:block">
-				<p class="text-sm font-medium">{{ user.username || 'Usuario' }}</p>
-				<p class="text-xs text-slate-500">{{ user.roles.join(', ') }}</p>
-			</div>
-			<button type="button" class="btn-secondary" appLogoutButton>Salir</button>
+		<div class="relative shrink-0">
+			<button
+				type="button"
+				class="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition hover:bg-brand-50"
+				aria-haspopup="menu"
+				[attr.aria-expanded]="menuOpen()"
+				(click)="toggleMenu()"
+			>
+				<app-icon name="user-circle" size="size-9" class="text-slate-700" [strokeWidth]="1.25" />
+				<span class="hidden text-left leading-tight sm:block">
+					<span class="block text-sm font-semibold text-slate-900">{{ user.username || 'Usuario' }}</span>
+					<span class="block text-xs text-slate-500">{{ rolesText() }}</span>
+				</span>
+				<app-icon name="chevron-down" size="size-4" class="text-slate-500 transition-transform" [class.rotate-180]="menuOpen()" />
+			</button>
+
+			@if (menuOpen()) {
+				<div class="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-glass" role="menu">
+					<div class="px-3 py-2 sm:hidden">
+						<p class="text-sm font-semibold text-slate-900">{{ user.username || 'Usuario' }}</p>
+						<p class="text-xs text-slate-500">{{ rolesText() }}</p>
+					</div>
+					<button
+						type="button"
+						role="menuitem"
+						appLogoutButton
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-danger-700 transition hover:bg-danger-50"
+						(click)="closeMenu()"
+					>
+						<app-icon name="arrow-right-start-on-rectangle" />
+						Cerrar sesión
+					</button>
+				</div>
+			}
 		</div>
 	}
 </header>

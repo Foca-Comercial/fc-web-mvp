@@ -5,8 +5,8 @@ import { Component, input } from '@angular/core';
 @Component({
 	selector: 'app-coming-soon',
 	template: `
-		<section class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-			<h1 class="text-xl font-semibold">{{ title() }}</h1>
+		<section class="flex flex-col items-center justify-center gap-2 rounded-2xl bg-white p-12 text-center shadow-card">
+			<h1 class="text-xl font-bold text-brand-950">{{ title() }}</h1>
 			<p class="text-sm text-slate-500">Vista en construcción.</p>
 		</section>
 	`,

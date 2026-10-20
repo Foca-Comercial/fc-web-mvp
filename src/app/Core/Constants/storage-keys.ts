@@ -5,4 +5,6 @@
 
 export const STORAGE_KEYS = {
 	USERNAME: 'fc.username',
+	// Preferencia del menú lateral en escritorio: 'open' | 'closed'
+	SIDEBAR: 'fc.sidebar',
 } as const;

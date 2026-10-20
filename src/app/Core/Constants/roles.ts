@@ -11,3 +11,14 @@ export const ROLES = {
 } as const;
 
 export type RoleName = (typeof ROLES)[keyof typeof ROLES];
+
+// Nombre para mostrar en pantalla (los valores de ROLES son los del backend)
+export const ROLE_LABELS: Record<string, string> = {
+	[ROLES.ADMIN]: 'Administrador',
+	[ROLES.COMMERCIAL_MANAGER]: 'Gestor comercial',
+	[ROLES.SELLER]: 'Vendedor',
+};
+
+export function roleLabel(role: string): string {
+	return ROLE_LABELS[role] ?? role;
+}
