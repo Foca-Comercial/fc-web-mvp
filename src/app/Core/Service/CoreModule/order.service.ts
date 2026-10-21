@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_ENDPOINTS } from '@core/Constants/api-endpoints';
-import { Order, OrderFullDetail, OrderSummary } from '@core/Models/CoreModule/order.model';
+import { Order, OrderFullDetail, OrderSummary, RouteOfDay } from '@core/Models/CoreModule/order.model';
 import { IsoDate } from '@core/Models/Shared/api-types.model';
 import { ReadOnlyService } from '../generic.service';
 
@@ -32,6 +32,13 @@ export class OrderService extends ReadOnlyService<Order> {
 	// Modal de detalle: cliente, domiciliario y productos del pedido
 	getFullDetail(id: number): Observable<OrderFullDetail> {
 		return this.http.get<OrderFullDetail>(`${this.baseUrl}/${id}/details`);
+	}
+
+	// ----- Pedidos por ruta -----
+	// Rutas activas que salen ese día (sin `date` es "hoy" en Bogotá), con cuántos
+	// pedidos ya se generaron desde cada una
+	getRoutesOfDay(date?: IsoDate): Observable<RouteOfDay[]> {
+		return this.http.get<RouteOfDay[]>(`${this.baseUrl}/routes-of-day`, { params: this.dateParams(date) });
 	}
 
 	private dateParams(date?: IsoDate): HttpParams {

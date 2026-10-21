@@ -1,0 +1,59 @@
+<app-modal [title]="title()" [open]="card() !== null" (openChange)="onOpenChange($event)" maxWidth="max-w-3xl">
+	@if (card(); as card) {
+		<dl class="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Días de salida</dt>
+				<dd class="mt-0.5 text-slate-800">{{ card.route.days_week | daysWeek: 'long' }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Hora de salida</dt>
+				<dd class="mt-0.5 text-slate-800">{{ departure() }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Pedidos de hoy</dt>
+				<dd class="mt-0.5 text-slate-800">
+					{{ statusLabel() }}
+					@if (card.route.orders_count > 0) {
+						<span class="text-slate-500">({{ card.route.orders_count }} {{ card.route.orders_count === 1 ? 'pedido' : 'pedidos' }})</span>
+					}
+				</dd>
+			</div>
+		</dl>
+
+		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Clientes ({{ card.clients.length }})</h3>
+		@if (card.clients.length > 0) {
+			<div class="overflow-x-auto rounded-xl border border-slate-200">
+				<table class="w-full min-w-140 border-collapse text-sm">
+					<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
+						<tr>
+							<th scope="col" class="px-4 py-2.5 text-left font-bold">Cliente</th>
+							<th scope="col" class="px-4 py-2.5 text-left font-bold">Teléfono</th>
+							<th scope="col" class="px-4 py-2.5 text-left font-bold">Dirección</th>
+							<th scope="col" class="px-4 py-2.5 text-left font-bold">Barrio · Zona</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (client of card.clients; track client.id_client_route) {
+							<tr class="border-t border-slate-200">
+								<td class="px-4 py-2.5 font-semibold text-slate-900">{{ client.name }}</td>
+								<td class="px-4 py-2.5 tabular-nums text-slate-700">{{ client.phone || '—' }}</td>
+								<td class="px-4 py-2.5 text-slate-700">{{ client.address || '—' }}</td>
+								<td class="px-4 py-2.5 text-slate-700">{{ client.neighborhood_name }} · {{ client.zone_name }}</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		} @else {
+			<app-empty-state
+				icon="inbox"
+				title="La ruta no tiene clientes"
+				description="Asigna clientes a la ruta para poder generar sus pedidos."
+			/>
+		}
+	}
+
+	<div modal-footer class="flex justify-end">
+		<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
+	</div>
+</app-modal>

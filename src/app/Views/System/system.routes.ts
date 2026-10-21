@@ -29,8 +29,9 @@ export const SYSTEM_ROUTES: Routes = [
 			},
 			{
 				path: 'rutas',
-				title: 'Rutas · Foca Comercial',
-				component: ComingSoonComponent,
+				title: 'Rutas constantes · Foca Comercial',
+				loadComponent: () =>
+					import('./Routes/routes-board/routes-board.component').then((m) => m.RoutesBoardComponent),
 				canActivate: [roleGuard],
 				data: { roles: MANAGER, title: 'Rutas' },
 			},

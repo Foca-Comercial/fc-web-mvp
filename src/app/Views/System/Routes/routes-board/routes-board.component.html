@@ -1,0 +1,91 @@
+<section class="space-y-2">
+	<!-- Búsqueda, filtros y acciones -->
+	<div class="flex flex-wrap items-center justify-between gap-4 rounded-[10px] bg-white px-4 py-5 shadow-card sm:px-[25px] sm:py-[27px]">
+		<div class="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:gap-[23px]">
+			<app-search-input class="w-full sm:w-87" placeholder="Buscar Ruta" [(value)]="search" />
+			<app-filter-select class="w-full sm:w-66" label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
+			<app-filter-select
+				class="w-full sm:w-66"
+				label="Estado"
+				allLabel="Todos los estados"
+				[options]="statusOptions"
+				[(value)]="status"
+			/>
+		</div>
+		<button
+			type="button"
+			class="flex h-[47px] w-full items-center justify-center gap-4 rounded-xl bg-brand-700 px-5 text-base font-medium text-white shadow-sm transition hover:bg-brand-800 active:bg-brand-950 sm:w-[155px]"
+			(click)="newRoute()"
+		>
+			<app-icon name="plus" size="size-5" [strokeWidth]="2" />
+			Nueva Ruta
+		</button>
+	</div>
+
+	<!-- Pestaña + contenido -->
+	<div>
+		<div class="grid w-full place-items-center rounded-t-xl bg-slate-300 px-8 py-6 sm:w-[346px]">
+			<h1 class="text-2xl font-bold leading-8 text-slate-600 sm:text-[32px]">Rutas Del Día</h1>
+		</div>
+
+		<div class="rounded-b-lg bg-slate-300 p-2 sm:rounded-tr-lg">
+			@if (loading()) {
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6" aria-busy="true" aria-label="Cargando rutas">
+					@for (item of skeletonCards; track item) {
+						<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-[13px]">
+							<div class="flex h-15 items-center gap-2.5">
+								<app-skeleton class="size-[50px] rounded-full" />
+								<app-skeleton class="h-4 w-40 rounded-md" />
+							</div>
+							<div class="grid grid-cols-2 gap-5">
+								<app-skeleton class="h-[79px] rounded-2xl" />
+								<app-skeleton class="h-[79px] rounded-2xl" />
+							</div>
+							<app-skeleton class="h-4 w-full rounded-md" />
+							<app-skeleton class="h-4 w-2/3 rounded-md" />
+							<div class="mt-auto grid grid-cols-2 gap-5">
+								<app-skeleton class="h-11 rounded-2xl" />
+								<app-skeleton class="h-11 rounded-2xl" />
+							</div>
+						</div>
+					}
+				</div>
+			} @else if (loadFailed()) {
+				<app-empty-state
+					class="rounded-2xl bg-white"
+					icon="exclamation-triangle"
+					title="No se pudieron cargar las rutas"
+					description="Revisa tu conexión e inténtalo de nuevo."
+				>
+					<button type="button" class="btn-primary" (click)="retry()">Reintentar</button>
+				</app-empty-state>
+			} @else if (visibleCards().length === 0) {
+				@if (hasFilters()) {
+					<app-empty-state
+						class="rounded-2xl bg-white"
+						icon="magnifying-glass"
+						title="Ninguna ruta coincide con la búsqueda"
+						description="Prueba con otros datos o quita los filtros."
+					>
+						<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+					</app-empty-state>
+				} @else {
+					<app-empty-state
+						class="rounded-2xl bg-white"
+						icon="map-pin"
+						title="No hay rutas para hoy"
+						description="Las rutas que salen este día de la semana aparecerán aquí."
+					/>
+				}
+			} @else {
+				<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
+					@for (card of visibleCards(); track card.route.id_route) {
+						<app-route-card [card]="card" (viewDetails)="openDetail(card)" (addToMain)="addToMain(card)" />
+					}
+				</div>
+			}
+		</div>
+	</div>
+</section>
+
+<app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" />
