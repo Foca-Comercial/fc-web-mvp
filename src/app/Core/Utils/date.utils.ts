@@ -22,6 +22,11 @@ export function toIsoDateBogota(date: Date): string {
 	}).format(date);
 }
 
+// Día de la semana de hoy en Bogotá: 1 = lunes ... 7 = domingo (como DayWeek de la API)
+export function isoWeekdayBogota(date: Date = new Date()): number {
+	return parseIsoDate(toIsoDateBogota(date)).getDay() || 7;
+}
+
 // "AAAA-MM-DD" → Date local a medianoche (para mostrarla sin corrimiento de día)
 export function parseIsoDate(value: string): Date {
 	const [year, month, day] = value.split('-').map(Number);

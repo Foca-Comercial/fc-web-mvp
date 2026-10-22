@@ -2,30 +2,37 @@
 <div class="flex h-15 items-center justify-between gap-3">
 	<div class="flex min-w-0 items-center gap-2.5">
 		<span class="grid size-[50px] shrink-0 place-items-center rounded-full bg-brand-900">
-			<img src="img/routes/route-logo.svg" width="30" height="30" alt="" />
+			<app-icon name="map" size="size-[30px]" class="text-white" />
 		</span>
-		<h2 class="truncate text-base font-semibold leading-6 text-slate-900" [title]="card().route.name">{{ card().route.name }}</h2>
+		<div class="min-w-0">
+			<h3 class="truncate text-base font-semibold leading-6 text-slate-900" [title]="card().route.name">{{ card().route.name }}</h3>
+			@if (informative()) {
+				<p class="truncate text-xs text-slate-500">{{ card().route.days_week | daysWeek }}</p>
+			}
+		</div>
 	</div>
-	<span
-		class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border-[0.5px] px-2 text-sm leading-6 whitespace-nowrap"
-		[class]="added() ? 'border-slate-600 bg-slate-200 text-slate-600' : 'border-success-700 bg-success-200 text-success-700'"
-	>
-		{{ statusLabel() }}
-	</span>
+	@if (!informative()) {
+		<span
+			class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border-[0.5px] px-2 text-sm leading-6 whitespace-nowrap"
+			[class]="added() ? 'border-slate-600 bg-slate-200 text-slate-600' : 'border-success-700 bg-success-200 text-success-700'"
+		>
+			{{ statusLabel() }}
+		</span>
+	}
 </div>
 
 <!-- Cajas informativas -->
 <dl class="grid grid-cols-2 gap-5">
 	<div class="flex min-h-[79px] flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
 		<dt class="flex items-center gap-2 text-sm leading-6 text-slate-600">
-			<img src="img/routes/clients.svg" width="32" height="32" alt="" class="shrink-0" />
+			<app-icon name="building-office-2" size="size-8" class="text-slate-900" />
 			N° de clientes
 		</dt>
 		<dd class="text-lg font-semibold leading-6 tabular-nums text-slate-900">{{ card().route.clients_count }}</dd>
 	</div>
 	<div class="flex min-h-[79px] flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
 		<dt class="flex items-center gap-2 text-sm leading-6 text-slate-600">
-			<img src="img/routes/departure.svg" width="32" height="32" alt="" class="shrink-0" />
+			<app-icon name="clock" size="size-8" class="text-slate-900" />
 			Hora de salida
 		</dt>
 		<dd class="text-lg font-semibold leading-6 tabular-nums text-slate-900">{{ departure() }}</dd>
@@ -42,44 +49,40 @@
 	}
 </p>
 
-<!-- Acciones -->
-<div class="mt-auto grid grid-cols-2 gap-5">
-	<button
-		type="button"
-		class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-slate-300 px-1 text-base font-semibold text-slate-900 transition hover:bg-slate-400/70"
-		[attr.aria-label]="'Ver detalles de la ruta ' + card().route.name"
-		(click)="viewDetails.emit()"
-	>
-		<span class="grid size-6 shrink-0 place-items-center">
-			<img src="img/routes/eye.svg" width="21.2258" height="16" alt="" />
-		</span>
-		Ver detalles
-	</button>
+<!-- Acciones (solo en las rutas del día) -->
+@if (!informative()) {
+	<div class="mt-auto grid grid-cols-2 gap-5">
+		<button
+			type="button"
+			class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-slate-300 px-1 text-base font-semibold text-slate-900 transition hover:bg-slate-400/70"
+			[attr.aria-label]="'Ver detalles de la ruta ' + card().route.name"
+			(click)="viewDetails.emit()"
+		>
+			<app-icon name="eye" size="size-6" />
+			Ver detalles
+		</button>
 
-	@if (added()) {
-		<button
-			type="button"
-			class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-[#b3b3b3] px-1 text-base font-semibold text-slate-600"
-			disabled
-			title="Los pedidos de esta ruta ya están en el tablero de despachos"
-		>
-			<span class="grid size-6 shrink-0 place-items-center">
-				<img src="img/routes/main-view-added.svg" width="20" height="18.84" alt="" />
-			</span>
-			Vista principal
-		</button>
-	} @else {
-		<button
-			type="button"
-			class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-brand-700 px-1 text-base font-semibold text-white transition hover:bg-brand-800 active:bg-brand-950"
-			[attr.aria-label]="'Agregar la ruta ' + card().route.name + ' a la vista principal'"
-			title="Generar los pedidos de la ruta en el tablero de despachos"
-			(click)="addToMain.emit()"
-		>
-			<span class="grid size-6 shrink-0 place-items-center">
-				<img src="img/routes/main-view-add.svg" width="21.501" height="19.5" alt="" />
-			</span>
-			Vista principal
-		</button>
-	}
-</div>
+		@if (added()) {
+			<button
+				type="button"
+				class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-[#b3b3b3] px-1 text-base font-semibold text-slate-600"
+				disabled
+				title="Los pedidos de esta ruta ya están en el tablero de despachos"
+			>
+				<app-icon name="check-circle" size="size-6" />
+				Vista principal
+			</button>
+		} @else {
+			<button
+				type="button"
+				class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-brand-700 px-1 text-base font-semibold text-white transition hover:bg-brand-800 active:bg-brand-950"
+				[attr.aria-label]="'Agregar la ruta ' + card().route.name + ' a la vista principal'"
+				title="Generar los pedidos de la ruta en el tablero de despachos"
+				(click)="addToMain.emit()"
+			>
+				<app-icon name="tv" size="size-6" />
+				Vista principal
+			</button>
+		}
+	</div>
+}

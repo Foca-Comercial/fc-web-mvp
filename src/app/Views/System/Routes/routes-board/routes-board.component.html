@@ -1,16 +1,23 @@
 <section class="space-y-2">
+	<h1 class="sr-only">Rutas constantes</h1>
+
 	<!-- Búsqueda, filtros y acciones -->
 	<div class="flex flex-wrap items-center justify-between gap-4 rounded-[10px] bg-white px-4 py-5 shadow-card sm:px-[25px] sm:py-[27px]">
 		<div class="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:gap-[23px]">
 			<app-search-input class="w-full sm:w-87" placeholder="Buscar Ruta" [(value)]="search" />
 			<app-filter-select class="w-full sm:w-66" label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
-			<app-filter-select
-				class="w-full sm:w-66"
-				label="Estado"
-				allLabel="Todos los estados"
-				[options]="statusOptions"
-				[(value)]="status"
-			/>
+			<!-- Rutas del día: por estado · Rutas de la semana: por día -->
+			@if (tab() === 'day') {
+				<app-filter-select
+					class="w-full sm:w-66"
+					label="Estado"
+					allLabel="Todos los estados"
+					[options]="statusOptions"
+					[(value)]="status"
+				/>
+			} @else {
+				<app-filter-select class="w-full sm:w-66" label="Día" allLabel="Todos los días" [options]="dayOptions" [(value)]="day" />
+			}
 		</div>
 		<button
 			type="button"
@@ -22,70 +29,135 @@
 		</button>
 	</div>
 
-	<!-- Pestaña + contenido -->
+	<!-- Pestañas + contenido -->
 	<div>
-		<div class="grid w-full place-items-center rounded-t-xl bg-slate-300 px-8 py-6 sm:w-[346px]">
-			<h1 class="text-2xl font-bold leading-8 text-slate-600 sm:text-[32px]">Rutas Del Día</h1>
-		</div>
+		<app-tabs variant="slate" idPrefix="routes-tab" [tabs]="tabs" [selected]="tab()" (selectedChange)="changeTab($event)" />
 
-		<div class="rounded-b-lg bg-slate-300 p-2 sm:rounded-tr-lg">
-			@if (loading()) {
-				<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6" aria-busy="true" aria-label="Cargando rutas">
-					@for (item of skeletonCards; track item) {
-						<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-[13px]">
-							<div class="flex h-15 items-center gap-2.5">
-								<app-skeleton class="size-[50px] rounded-full" />
-								<app-skeleton class="h-4 w-40 rounded-md" />
-							</div>
-							<div class="grid grid-cols-2 gap-5">
-								<app-skeleton class="h-[79px] rounded-2xl" />
-								<app-skeleton class="h-[79px] rounded-2xl" />
-							</div>
-							<app-skeleton class="h-4 w-full rounded-md" />
-							<app-skeleton class="h-4 w-2/3 rounded-md" />
-							<div class="mt-auto grid grid-cols-2 gap-5">
-								<app-skeleton class="h-11 rounded-2xl" />
-								<app-skeleton class="h-11 rounded-2xl" />
-							</div>
-						</div>
+		<div
+			class="rounded-b-lg bg-slate-300 p-2 sm:rounded-tr-lg"
+			role="tabpanel"
+			[id]="'routes-tab-panel-' + tab()"
+			[attr.aria-labelledby]="'routes-tab-' + tab()"
+		>
+			@if (tab() === 'day') {
+				<!-- ===== Rutas del día ===== -->
+				@if (dayLoading()) {
+					<ng-container [ngTemplateOutlet]="skeleton" />
+				} @else if (dayFailed()) {
+					<ng-container [ngTemplateOutlet]="loadError" />
+				} @else if (visibleDayCards().length === 0) {
+					@if (hasFilters()) {
+						<ng-container [ngTemplateOutlet]="noMatches" />
+					} @else {
+						<app-empty-state
+							class="rounded-2xl bg-white"
+							icon="map-pin"
+							title="No hay rutas para hoy"
+							description="Las rutas que salen este día de la semana aparecerán aquí."
+						/>
 					}
-				</div>
-			} @else if (loadFailed()) {
-				<app-empty-state
-					class="rounded-2xl bg-white"
-					icon="exclamation-triangle"
-					title="No se pudieron cargar las rutas"
-					description="Revisa tu conexión e inténtalo de nuevo."
-				>
-					<button type="button" class="btn-primary" (click)="retry()">Reintentar</button>
-				</app-empty-state>
-			} @else if (visibleCards().length === 0) {
-				@if (hasFilters()) {
-					<app-empty-state
-						class="rounded-2xl bg-white"
-						icon="magnifying-glass"
-						title="Ninguna ruta coincide con la búsqueda"
-						description="Prueba con otros datos o quita los filtros."
-					>
-						<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
-					</app-empty-state>
 				} @else {
-					<app-empty-state
-						class="rounded-2xl bg-white"
-						icon="map-pin"
-						title="No hay rutas para hoy"
-						description="Las rutas que salen este día de la semana aparecerán aquí."
-					/>
+					<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
+						@for (card of visibleDayCards(); track card.route.id_route) {
+							<app-route-card [card]="card" (viewDetails)="openDetail(card)" (addToMain)="addToMain(card)" />
+						}
+					</div>
 				}
 			} @else {
-				<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
-					@for (card of visibleCards(); track card.route.id_route) {
-						<app-route-card [card]="card" (viewDetails)="openDetail(card)" (addToMain)="addToMain(card)" />
+				<!-- ===== Rutas de la semana (solo informativas) ===== -->
+				@if (weekLoading()) {
+					<ng-container [ngTemplateOutlet]="skeleton" />
+				} @else if (weekFailed()) {
+					<ng-container [ngTemplateOutlet]="loadError" />
+				} @else if (!weekHasResults()) {
+					@if (hasFilters()) {
+						<ng-container [ngTemplateOutlet]="noMatches" />
+					} @else {
+						<app-empty-state
+							class="rounded-2xl bg-white"
+							icon="map-pin"
+							title="No hay rutas registradas"
+							description="Cuando se creen rutas aparecerán aquí, organizadas por día."
+						/>
 					}
-				</div>
+				} @else {
+					<div class="space-y-6 py-2">
+						@for (day of weekDays(); track day.day) {
+							<section [attr.aria-labelledby]="'week-day-' + day.day">
+								<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2">
+									<h2 [id]="'week-day-' + day.day" class="text-xl font-bold text-slate-700">{{ day.label }}</h2>
+									@if (day.day === today) {
+										<span class="rounded-full bg-brand-700 px-2.5 py-0.5 text-xs font-semibold text-white">Hoy</span>
+									}
+									<span class="text-sm text-slate-600">
+										{{ day.cards.length }} {{ day.cards.length === 1 ? 'ruta' : 'rutas' }}
+									</span>
+								</div>
+
+								@if (day.cards.length > 0) {
+									<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
+										@for (card of day.cards; track card.route.id_route) {
+											<app-route-card [card]="card" />
+										}
+									</div>
+								} @else {
+									<p class="rounded-2xl bg-white/60 px-5 py-4 text-sm text-slate-600">
+										{{ hasFilters() ? 'Ninguna ruta de este día coincide con la búsqueda.' : 'Sin rutas este día.' }}
+									</p>
+								}
+							</section>
+						}
+					</div>
+				}
 			}
 		</div>
 	</div>
 </section>
 
 <app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" />
+
+<!-- ===== Plantillas compartidas por las dos pestañas ===== -->
+<ng-template #skeleton>
+	<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6" aria-busy="true" aria-label="Cargando rutas">
+		@for (item of skeletonCards; track item) {
+			<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-[13px]">
+				<div class="flex h-15 items-center gap-2.5">
+					<app-skeleton class="size-[50px] rounded-full" />
+					<app-skeleton class="h-4 w-40 rounded-md" />
+				</div>
+				<div class="grid grid-cols-2 gap-5">
+					<app-skeleton class="h-[79px] rounded-2xl" />
+					<app-skeleton class="h-[79px] rounded-2xl" />
+				</div>
+				<app-skeleton class="h-4 w-full rounded-md" />
+				<app-skeleton class="h-4 w-2/3 rounded-md" />
+				<div class="mt-auto grid grid-cols-2 gap-5">
+					<app-skeleton class="h-11 rounded-2xl" />
+					<app-skeleton class="h-11 rounded-2xl" />
+				</div>
+			</div>
+		}
+	</div>
+</ng-template>
+
+<ng-template #loadError>
+	<app-empty-state
+		class="rounded-2xl bg-white"
+		icon="exclamation-triangle"
+		title="No se pudieron cargar las rutas"
+		description="Revisa tu conexión e inténtalo de nuevo."
+	>
+		<button type="button" class="btn-primary" (click)="retry()">Reintentar</button>
+	</app-empty-state>
+</ng-template>
+
+<ng-template #noMatches>
+	<app-empty-state
+		class="rounded-2xl bg-white"
+		icon="magnifying-glass"
+		title="Ninguna ruta coincide con la búsqueda"
+		description="Prueba con otros datos o quita los filtros."
+	>
+		<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+	</app-empty-state>
+</ng-template>
