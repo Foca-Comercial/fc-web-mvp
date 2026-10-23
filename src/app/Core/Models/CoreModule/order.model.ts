@@ -169,17 +169,14 @@ export interface RouteOfDay {
 	orders_count: number; // pedidos de ese día ya generados desde la ruta
 }
 
+// GET /orders/routes/{id}/template: por cliente, SOLO sus productos con precio pactado
+// (activos). Son los que lleva en la ruta; no se envía el catálogo completo.
 export interface RouteTemplateProduct {
 	id_product: number;
 	code: string;
 	name: string;
-	base_price: Money;
-}
-
-export interface RouteTemplatePrice {
-	id_product: number;
-	unit_price: Money;
-	is_special: boolean;
+	unit_price: Money; // precio pactado con el cliente
+	cant: number; // cantidad sugerida (1); el gestor la edita
 }
 
 export interface RouteTemplateClient {
@@ -189,7 +186,7 @@ export interface RouteTemplateClient {
 	address: string | null;
 	neighborhood_name: string;
 	zone_name: string;
-	prices: RouteTemplatePrice[];
+	products: RouteTemplateProduct[]; // vacío = sin precios pactados: no se le genera pedido
 	existing_order_id: number | null; // ya tiene pedido de hoy desde la ruta
 }
 
@@ -197,13 +194,19 @@ export interface RouteOrderTemplate {
 	id_route: number;
 	name: string;
 	departure_time: TimeString;
-	products: RouteTemplateProduct[];
 	clients: RouteTemplateClient[];
+}
+
+// Renglón de un pedido por ruta: sin precio, el backend usa el pactado del cliente
+// (solo productos con precio pactado; si no, NO_SPECIAL_PRICE)
+export interface RouteOrderItemInput {
+	id_product: number;
+	cant: number; // > 0
 }
 
 export interface RouteOrderClientInput {
 	id_client: number;
-	items: OrderItemInput[];
+	items: RouteOrderItemInput[];
 }
 
 // POST /orders/routes/{id}

@@ -64,9 +64,9 @@
 					</div>
 				}
 			} @else {
-				<!-- ===== Rutas de la semana (solo informativas) ===== -->
+				<!-- ===== Rutas de la semana (tablero informativo) ===== -->
 				@if (weekLoading()) {
-					<ng-container [ngTemplateOutlet]="skeleton" />
+					<ng-container [ngTemplateOutlet]="weekSkeleton" />
 				} @else if (weekFailed()) {
 					<ng-container [ngTemplateOutlet]="loadError" />
 				} @else if (!weekHasResults()) {
@@ -81,28 +81,32 @@
 						/>
 					}
 				} @else {
-					<div class="space-y-6 py-2">
+					<!-- Tablero: una columna por día, sin scroll lateral -->
+					<div class="grid gap-2" [class]="singleDay() ? 'grid-cols-1' : 'sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7'">
 						@for (day of weekDays(); track day.day) {
-							<section [attr.aria-labelledby]="'week-day-' + day.day">
-								<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-2">
-									<h2 [id]="'week-day-' + day.day" class="text-xl font-bold text-slate-700">{{ day.label }}</h2>
-									@if (day.day === today) {
-										<span class="rounded-full bg-brand-700 px-2.5 py-0.5 text-xs font-semibold text-white">Hoy</span>
-									}
-									<span class="text-sm text-slate-600">
+							<section class="flex min-w-0 flex-col gap-2 rounded-xl bg-white/35 p-1.5" [attr.aria-labelledby]="'week-day-' + day.day">
+								<header
+									class="rounded-lg px-2 py-2.5 text-center"
+									[class]="day.day === today ? 'bg-brand-900 text-white shadow-card' : 'bg-white text-slate-700'"
+								>
+									<h2 [id]="'week-day-' + day.day" class="truncate text-sm font-bold uppercase tracking-wide">{{ day.label }}</h2>
+									<p class="text-xs" [class]="day.day === today ? 'text-brand-100' : 'text-slate-500'">
+										@if (day.day === today) {
+											Hoy ·
+										}
 										{{ day.cards.length }} {{ day.cards.length === 1 ? 'ruta' : 'rutas' }}
-									</span>
-								</div>
+									</p>
+								</header>
 
 								@if (day.cards.length > 0) {
-									<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
+									<div [class]="singleDay() ? 'grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2' : 'flex flex-col gap-2'">
 										@for (card of day.cards; track card.route.id_route) {
-											<app-route-card [card]="card" />
+											<app-route-week-card [card]="card" />
 										}
 									</div>
 								} @else {
-									<p class="rounded-2xl bg-white/60 px-5 py-4 text-sm text-slate-600">
-										{{ hasFilters() ? 'Ninguna ruta de este día coincide con la búsqueda.' : 'Sin rutas este día.' }}
+									<p class="rounded-lg border border-dashed border-slate-400/70 px-2 py-6 text-center text-xs text-slate-600">
+										{{ hasFilters() ? 'Ninguna coincide' : 'Sin rutas' }}
 									</p>
 								}
 							</section>
@@ -114,7 +118,14 @@
 	</div>
 </section>
 
-<app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" />
+<app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" (edit)="editRoute($event)" />
+<app-route-form-modal [open]="formOpen()" [route]="formRoute()" (closed)="onFormClosed($event)" />
+<app-route-orders-modal
+	[card]="ordersCard()"
+	(closed)="ordersCard.set(null)"
+	(created)="onOrdersCreated($event)"
+	(outdated)="onOrdersOutdated()"
+/>
 
 <!-- ===== Plantillas compartidas por las dos pestañas ===== -->
 <ng-template #skeleton>
@@ -135,6 +146,20 @@
 					<app-skeleton class="h-11 rounded-2xl" />
 					<app-skeleton class="h-11 rounded-2xl" />
 				</div>
+			</div>
+		}
+	</div>
+</ng-template>
+
+<ng-template #weekSkeleton>
+	<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7" aria-busy="true" aria-label="Cargando rutas de la semana">
+		@for (column of weekSkeletonColumns; track column) {
+			<div class="flex flex-col gap-2 rounded-xl bg-white/35 p-1.5">
+				<app-skeleton class="h-[52px] rounded-lg" />
+				<app-skeleton class="h-28 rounded-xl" />
+				@if (column % 2 === 0) {
+					<app-skeleton class="h-28 rounded-xl" />
+				}
 			</div>
 		}
 	</div>

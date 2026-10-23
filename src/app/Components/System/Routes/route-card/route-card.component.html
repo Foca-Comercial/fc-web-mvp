@@ -4,21 +4,14 @@
 		<span class="grid size-[50px] shrink-0 place-items-center rounded-full bg-brand-900">
 			<app-icon name="map" size="size-[30px]" class="text-white" />
 		</span>
-		<div class="min-w-0">
-			<h3 class="truncate text-base font-semibold leading-6 text-slate-900" [title]="card().route.name">{{ card().route.name }}</h3>
-			@if (informative()) {
-				<p class="truncate text-xs text-slate-500">{{ card().route.days_week | daysWeek }}</p>
-			}
-		</div>
+		<h3 class="truncate text-base font-semibold leading-6 text-slate-900" [title]="card().route.name">{{ card().route.name }}</h3>
 	</div>
-	@if (!informative()) {
-		<span
-			class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border-[0.5px] px-2 text-sm leading-6 whitespace-nowrap"
-			[class]="added() ? 'border-slate-600 bg-slate-200 text-slate-600' : 'border-success-700 bg-success-200 text-success-700'"
-		>
-			{{ statusLabel() }}
-		</span>
-	}
+	<span
+		class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border-[0.5px] px-2 text-sm leading-6 whitespace-nowrap"
+		[class]="added() ? 'border-slate-600 bg-slate-200 text-slate-600' : 'border-success-700 bg-success-200 text-success-700'"
+	>
+		{{ statusLabel() }}
+	</span>
 </div>
 
 <!-- Cajas informativas -->
@@ -49,40 +42,38 @@
 	}
 </p>
 
-<!-- Acciones (solo en las rutas del día) -->
-@if (!informative()) {
-	<div class="mt-auto grid grid-cols-2 gap-5">
+<!-- Acciones -->
+<div class="mt-auto grid grid-cols-2 gap-5">
+	<button
+		type="button"
+		class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-slate-300 px-1 text-base font-semibold text-slate-900 transition hover:bg-slate-400/70"
+		[attr.aria-label]="'Ver detalles de la ruta ' + card().route.name"
+		(click)="viewDetails.emit()"
+	>
+		<app-icon name="eye" size="size-6" />
+		Ver detalles
+	</button>
+
+	@if (added()) {
 		<button
 			type="button"
-			class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-slate-300 px-1 text-base font-semibold text-slate-900 transition hover:bg-slate-400/70"
-			[attr.aria-label]="'Ver detalles de la ruta ' + card().route.name"
-			(click)="viewDetails.emit()"
+			class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-[#b3b3b3] px-1 text-base font-semibold text-slate-600"
+			disabled
+			title="Los pedidos de esta ruta ya están en el tablero de despachos"
 		>
-			<app-icon name="eye" size="size-6" />
-			Ver detalles
+			<app-icon name="check-circle" size="size-6" />
+			Vista principal
 		</button>
-
-		@if (added()) {
-			<button
-				type="button"
-				class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-[#b3b3b3] px-1 text-base font-semibold text-slate-600"
-				disabled
-				title="Los pedidos de esta ruta ya están en el tablero de despachos"
-			>
-				<app-icon name="check-circle" size="size-6" />
-				Vista principal
-			</button>
-		} @else {
-			<button
-				type="button"
-				class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-brand-700 px-1 text-base font-semibold text-white transition hover:bg-brand-800 active:bg-brand-950"
-				[attr.aria-label]="'Agregar la ruta ' + card().route.name + ' a la vista principal'"
-				title="Generar los pedidos de la ruta en el tablero de despachos"
-				(click)="addToMain.emit()"
-			>
-				<app-icon name="tv" size="size-6" />
-				Vista principal
-			</button>
-		}
-	</div>
-}
+	} @else {
+		<button
+			type="button"
+			class="flex h-11 items-center justify-center gap-1 rounded-2xl bg-brand-700 px-1 text-base font-semibold text-white transition hover:bg-brand-800 active:bg-brand-950"
+			[attr.aria-label]="'Agregar la ruta ' + card().route.name + ' a la vista principal'"
+			title="Generar los pedidos de la ruta en el tablero de despachos"
+			(click)="addToMain.emit()"
+		>
+			<app-icon name="tv" size="size-6" />
+			Vista principal
+		</button>
+	}
+</div>

@@ -51,6 +51,15 @@ export function routeDayStatus(route: RouteOfDay): RouteDayStatus {
 	return route.orders_count > 0 ? 'added' : 'pending';
 }
 
+// Tras crear los pedidos de una ruta: actualiza su conteo y su estado (pasa a "Agregado")
+export function markRouteAdded(cards: readonly RouteDayCard[], idRoute: number, created: number): RouteDayCard[] {
+	return cards.map((card) => {
+		if (card.route.id_route !== idRoute) return card;
+		const route = { ...card.route, orders_count: card.route.orders_count + created };
+		return { ...card, route, status: routeDayStatus(route) };
+	});
+}
+
 function clientsInfo(clients: readonly RouteClient[]): Pick<RouteCardInfo, 'clients' | 'clientNames' | 'zones'> {
 	const active = clients.filter((client) => client.active);
 	return {

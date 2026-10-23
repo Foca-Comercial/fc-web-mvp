@@ -1,0 +1,240 @@
+<app-modal [title]="title()" [open]="open()" (openChange)="onOpenChange($event)" maxWidth="max-w-3xl">
+	@let current = state();
+	@if (current.status === 'ready') {
+		@let template = current.template;
+
+		<!-- Datos comunes a todos los pedidos -->
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div>
+				<label for="route-orders-time" class="form-label">Hora estimada de entrega</label>
+				<input
+					id="route-orders-time"
+					type="time"
+					class="form-input"
+					[value]="deliveryTime()"
+					(input)="deliveryTime.set($any($event.target).value)"
+				/>
+				<p class="mt-1 text-xs text-slate-500">Precargada con la hora de salida de la ruta.</p>
+			</div>
+			<div>
+				<label for="route-orders-driver" class="form-label">Domiciliario</label>
+				<select id="route-orders-driver" class="form-input" (change)="setDriver($any($event.target).value)">
+					<option value="" [selected]="driverId() === null">Sin asignar</option>
+					@for (driver of drivers(); track driver.id_user_vehicle) {
+						<option [value]="driver.id_user_vehicle" [selected]="driverId() === driver.id_user_vehicle">
+							{{ driver.code }} · {{ driver.driver_name }} — {{ driver.vehicle_name }}
+						</option>
+					}
+				</select>
+				<p class="mt-1 text-xs text-slate-500">Opcional: también se puede asignar después en el tablero.</p>
+			</div>
+		</div>
+
+		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">
+			Productos por cliente
+			<span class="font-medium normal-case tracking-normal text-slate-500">
+				· vienen sus productos pactados: ajusta cantidades, quita lo que no pidió o desmarca a quien no pidió. Otros
+				productos se agregan después en el tablero.
+			</span>
+		</h3>
+
+		@if (template.clients.length === 0) {
+			<app-empty-state
+				icon="inbox"
+				title="La ruta no tiene clientes"
+				description="Asigna clientes a la ruta para poder generar sus pedidos."
+			/>
+		} @else {
+			<div class="space-y-4">
+				@for (client of template.clients; track client.id_client) {
+					@let hasOrder = client.existing_order_id !== null;
+					@let noProducts = !hasOrder && client.products.length === 0;
+					@let skipped = isExcluded(client);
+					@let editable = !hasOrder && !noProducts && !skipped;
+					<!-- Sin overflow-hidden: la lista del buscador debe poder salir de la sección -->
+					<section
+						class="rounded-xl border border-slate-200 transition-opacity"
+						[class.opacity-60]="hasOrder || skipped"
+						[attr.aria-label]="'Pedido de ' + client.name"
+					>
+						<header
+							class="flex flex-wrap items-start justify-between gap-2 bg-slate-50 px-4 py-3"
+							[class]="editable || noProducts ? 'rounded-t-xl' : 'rounded-xl'"
+						>
+							<div class="flex min-w-0 items-start gap-3">
+								@if (!hasOrder && !noProducts) {
+									<input
+										type="checkbox"
+										class="mt-1 size-4 shrink-0 cursor-pointer accent-brand-700"
+										[id]="'route-include-' + client.id_client"
+										[checked]="!skipped"
+										[attr.aria-label]="'Incluir el pedido de ' + client.name"
+										(change)="setIncluded(client, $any($event.target).checked)"
+									/>
+								}
+								<div class="min-w-0">
+									@if (!hasOrder && !noProducts) {
+										<label class="cursor-pointer font-semibold text-slate-900" [for]="'route-include-' + client.id_client">
+											{{ client.name }}
+										</label>
+									} @else {
+										<p class="font-semibold text-slate-900">{{ client.name }}</p>
+									}
+									<p class="text-xs text-slate-500">
+										{{ client.address || 'Sin dirección' }} · {{ client.neighborhood_name }} · {{ client.zone_name }}
+									</p>
+								</div>
+							</div>
+
+							@if (hasOrder) {
+								<app-status-badge tone="done">Ya tiene pedido de hoy</app-status-badge>
+							} @else if (noProducts) {
+								<app-status-badge tone="neutral">Sin precios pactados</app-status-badge>
+							} @else if (skipped) {
+								<span class="text-sm font-semibold text-slate-500">No pidió hoy</span>
+							} @else {
+								<p class="text-sm text-slate-600">
+									Total: <span class="font-bold tabular-nums text-brand-950">{{ clientTotal(client) | cop }}</span>
+								</p>
+							}
+						</header>
+
+						@if (noProducts) {
+							<p class="rounded-b-xl border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
+								No se le puede generar pedido desde la ruta porque no tiene precios pactados. Pídele al
+								administrador que los registre; mientras tanto, su pedido se toma aparte.
+							</p>
+						} @else if (editable) {
+							@let lines = linesOf(client);
+							@let removable = pickerOptions(client);
+							<div class="border-t border-slate-200 px-4 py-3">
+								@if (lines.length > 0) {
+									<ul class="divide-y divide-slate-200 rounded-lg border border-slate-200" [class.mb-3]="removable.length > 0">
+										@for (line of lines; track line.product.id_product) {
+											<li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 sm:flex-nowrap">
+												<!-- Producto y precio pactado -->
+												<div class="min-w-0 flex-1">
+													<p class="truncate text-sm">
+														<span class="font-semibold tabular-nums text-brand-900">{{ line.product.code }}</span>
+														<span class="text-slate-800"> · {{ line.product.name }}</span>
+													</p>
+													<p class="text-xs tabular-nums text-slate-500">{{ line.product.unit_price | cop }} c/u</p>
+												</div>
+
+												<!-- Cantidad: − [n] + -->
+												<div
+													class="flex items-center overflow-hidden rounded-lg border transition focus-within:ring-3 focus-within:ring-brand-500/25"
+													[class]="line.cant > 0 ? 'border-slate-300 focus-within:border-brand-500' : 'border-danger-500'"
+													role="group"
+													[attr.aria-label]="'Cantidad de ' + line.product.name"
+												>
+													<button
+														type="button"
+														class="grid size-8 place-items-center text-slate-600 transition hover:bg-slate-100 disabled:pointer-events-none disabled:opacity-40"
+														aria-label="Restar uno"
+														[disabled]="line.cant <= 1"
+														(click)="stepQuantity(client, line, -1)"
+													>
+														<app-icon name="minus" size="size-4" />
+													</button>
+													<input
+														type="text"
+														inputmode="numeric"
+														appNumericInput
+														[maxDigits]="maxQuantityDigits"
+														class="h-8 w-12 border-x border-slate-300 bg-white text-center text-sm font-semibold tabular-nums text-slate-900 outline-none"
+														placeholder="0"
+														[value]="line.cant || ''"
+														[attr.aria-label]="'Cantidad de ' + line.product.name + ' para ' + client.name"
+														[attr.aria-invalid]="line.cant <= 0"
+														(input)="setQuantity(client, line, $any($event.target).value)"
+													/>
+													<button
+														type="button"
+														class="grid size-8 place-items-center text-slate-600 transition hover:bg-slate-100"
+														aria-label="Sumar uno"
+														(click)="stepQuantity(client, line, 1)"
+													>
+														<app-icon name="plus" size="size-4" />
+													</button>
+												</div>
+
+												<!-- Subtotal y quitar -->
+												<p class="w-24 text-right text-sm font-semibold tabular-nums text-slate-900">
+													{{ line.cant > 0 ? (line.subtotal | cop) : '—' }}
+												</p>
+												<button
+													type="button"
+													class="grid size-8 place-items-center rounded-lg text-slate-400 transition hover:bg-danger-50 hover:text-danger-600"
+													[attr.aria-label]="'Quitar ' + line.product.name + ' del pedido de ' + client.name"
+													title="Quitar producto"
+													(click)="removeProduct(client, line)"
+												>
+													<app-icon name="trash" size="size-4" />
+												</button>
+											</li>
+										}
+									</ul>
+								} @else {
+									<p class="mb-2 text-xs text-slate-500">Quitaste todos sus productos: a este cliente no se le creará pedido hoy.</p>
+								}
+
+								<!-- Solo para volver a agregar uno de SUS productos pactados que se quitó -->
+								@if (removable.length > 0) {
+									<app-item-picker
+										placeholder="Volver a agregar un producto pactado"
+										[ariaLabel]="'Volver a agregar un producto pactado al pedido de ' + client.name"
+										noMatchText="Ningún producto pactado coincide con la búsqueda."
+										emptyText="Ya están todos sus productos pactados."
+										[options]="removable"
+										(picked)="addProduct(client, $event)"
+									/>
+								}
+							</div>
+						}
+					</section>
+				}
+			</div>
+
+			@if (orderable().length === 0) {
+				<p class="mt-4 rounded-xl bg-success-50 px-4 py-3 text-sm text-success-800">
+					{{
+						allHaveOrders()
+							? 'Todos los clientes de la ruta ya tienen su pedido de hoy.'
+							: 'Ningún cliente de la ruta puede generar pedido hoy: los que faltan no tienen precios pactados.'
+					}}
+				</p>
+			}
+		}
+	} @else if (current.status === 'error') {
+		<div class="flex flex-col items-center gap-3 py-8 text-center" role="alert">
+			<p class="max-w-sm text-sm text-slate-600">{{ current.message }}</p>
+			<button type="button" class="btn-secondary" (click)="retry()">Reintentar</button>
+		</div>
+	} @else {
+		<div class="space-y-4" aria-busy="true" aria-label="Cargando clientes y productos de la ruta">
+			<div class="grid gap-4 sm:grid-cols-2">
+				<app-skeleton class="h-16 w-full rounded-md" />
+				<app-skeleton class="h-16 w-full rounded-md" />
+			</div>
+			<app-skeleton class="h-28 w-full rounded-xl" />
+			<app-skeleton class="h-28 w-full rounded-xl" />
+		</div>
+	}
+
+	<div modal-footer class="flex flex-wrap items-center justify-between gap-3">
+		<p class="text-sm text-slate-600" aria-live="polite">
+			@if (missingQuantity()) {
+				<span class="font-semibold text-danger-700">Hay productos sin cantidad.</span>
+			} @else if (template()) {
+				<span class="font-semibold text-slate-900">{{ drafts().length }}</span> de {{ orderable().length }}
+				{{ orderable().length === 1 ? 'cliente' : 'clientes' }} con pedido ·
+				Total estimado <span class="font-bold tabular-nums text-brand-950">{{ total() | cop }}</span>
+			}
+		</p>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cancelar</button>
+			<button type="button" class="btn-primary" [disabled]="!canSubmit()" (click)="submit()">{{ submitLabel() }}</button>
+		</div>
+	</div>
+</app-modal>

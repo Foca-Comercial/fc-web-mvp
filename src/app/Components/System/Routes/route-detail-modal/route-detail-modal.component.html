@@ -53,7 +53,10 @@
 		}
 	}
 
-	<div modal-footer class="flex justify-end">
+	<div modal-footer class="flex flex-wrap justify-end gap-3">
 		<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
+		@if (card(); as card) {
+			<button type="button" class="btn-primary" (click)="edit.emit(card)">Editar ruta y clientes</button>
+		}
 	</div>
 </app-modal>

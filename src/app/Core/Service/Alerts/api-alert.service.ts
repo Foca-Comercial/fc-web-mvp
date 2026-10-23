@@ -13,6 +13,7 @@ import { firstValueFrom, isObservable, Observable } from 'rxjs';
 
 import { ApiError } from '@core/Models/Api/api-error.model';
 import { fieldLabel, parseApiErrorAsync } from '@core/Utils/api-error.utils';
+import { escapeHtml } from '@core/Utils/html.utils';
 import { AlertService, ConfirmOptions } from './alert.service';
 
 export interface RunOptions {
@@ -126,8 +127,4 @@ export class ApiAlertService {
 		const confirmed = await this.alert.confirm(confirm);
 		return confirmed ? this.run(source(), options) : { ok: false, cancelled: true };
 	}
-}
-
-function escapeHtml(value: string): string {
-	return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
 }

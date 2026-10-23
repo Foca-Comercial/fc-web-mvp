@@ -3,7 +3,15 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { API_ENDPOINTS } from '@core/Constants/api-endpoints';
-import { Order, OrderFullDetail, OrderSummary, RouteOfDay } from '@core/Models/CoreModule/order.model';
+import {
+	Order,
+	OrderFullDetail,
+	OrderSummary,
+	RouteOfDay,
+	RouteOrdersCreate,
+	RouteOrdersCreated,
+	RouteOrderTemplate,
+} from '@core/Models/CoreModule/order.model';
 import { IsoDate } from '@core/Models/Shared/api-types.model';
 import { ReadOnlyService } from '../generic.service';
 
@@ -39,6 +47,16 @@ export class OrderService extends ReadOnlyService<Order> {
 	// pedidos ya se generaron desde cada una
 	getRoutesOfDay(date?: IsoDate): Observable<RouteOfDay[]> {
 		return this.http.get<RouteOfDay[]>(`${this.baseUrl}/routes-of-day`, { params: this.dateParams(date) });
+	}
+
+	// Precarga del formulario: catálogo, precio que aplica a cada cliente y si ya tiene pedido de hoy
+	getRouteTemplate(id: number): Observable<RouteOrderTemplate> {
+		return this.http.get<RouteOrderTemplate>(`${this.baseUrl}/routes/${id}/template`);
+	}
+
+	// Crea en una sola transacción los pedidos de los clientes que traen productos (todo o nada)
+	createRouteOrders(id: number, body: RouteOrdersCreate): Observable<RouteOrdersCreated> {
+		return this.http.post<RouteOrdersCreated>(`${this.baseUrl}/routes/${id}`, body);
 	}
 
 	private dateParams(date?: IsoDate): HttpParams {

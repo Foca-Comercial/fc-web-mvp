@@ -3,16 +3,18 @@
 // ==================================================
 // Dos pestañas:
 //   - Rutas del día: las rutas que salen hoy (GET /orders/routes-of-day), con su estado
-//     y acciones. Una ruta está "Por agregar" hasta que se generan sus pedidos del día;
-//     entonces pasa a "Agregado" y sus pedidos aparecen en el tablero de despachos (la
-//     vista principal).
+//     y acciones. Una ruta está "Por agregar" hasta que se generan sus pedidos del día
+//     con "Vista principal" (<app-route-orders-modal>); entonces pasa a "Agregado" y sus
+//     pedidos aparecen en el tablero de despachos (la vista principal).
 //   - Rutas de la semana: todas las rutas activas (GET /routes/cards?only_active=true)
-//     agrupadas de lunes a domingo, en cards solo informativas. Se carga la primera vez
-//     que se abre la pestaña. Tiene su propio filtro por día de la semana.
+//     en un tablero con una columna por día (lunes a domingo) y cards compactas, solo
+//     informativas. Se carga la primera vez que se abre la pestaña. Tiene su propio
+//     filtro por día: con un día elegido, su columna ocupa todo el ancho.
 // Los nombres y zonas de los clientes de cada ruta vienen de GET /routes/{id}/clients
 // (las rutas no los traen) y se guardan para no pedirlos dos veces entre pestañas.
 // Buscar y filtrar se hace en el cliente (ver route-board.utils).
-// Crear rutas y generar los pedidos de una ruta se suman en el siguiente paso.
+// "Nueva Ruta" y "Editar ruta y clientes" (desde el detalle) abren <app-route-form-modal>:
+// datos de la ruta y sus clientes.
 
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
@@ -26,8 +28,11 @@ import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.componen
 import { TabItem, TabsComponent } from '@components/Shared/tabs/tabs.component';
 import { RouteCardComponent } from '@components/System/Routes/route-card/route-card.component';
 import { RouteDetailModalComponent } from '@components/System/Routes/route-detail-modal/route-detail-modal.component';
+import { RouteFormModalComponent } from '@components/System/Routes/route-form-modal/route-form-modal.component';
+import { RouteOrdersModalComponent } from '@components/System/Routes/route-orders-modal/route-orders-modal.component';
+import { RouteWeekCardComponent } from '@components/System/Routes/route-week-card/route-week-card.component';
+import { RouteOrdersCreated } from '@core/Models/CoreModule/order.model';
 import { RouteClient } from '@core/Models/ParametersModule/parameters.model';
-import { AlertService } from '@core/Service/Alerts/alert.service';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { RouteService } from '@core/Service/ParametersModule/route.service';
@@ -37,6 +42,8 @@ import {
 	buildWeekRouteCard,
 	filterRoutes,
 	groupRoutesByDay,
+	markRouteAdded,
+	RouteBasics,
 	RouteDayCard,
 	RouteFilters,
 	routeStatusOptions,
@@ -59,6 +66,9 @@ type RoutesTab = 'day' | 'week';
 		TabsComponent,
 		RouteCardComponent,
 		RouteDetailModalComponent,
+		RouteFormModalComponent,
+		RouteOrdersModalComponent,
+		RouteWeekCardComponent,
 	],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	templateUrl: './routes-board.component.html',
@@ -67,7 +77,6 @@ export class RoutesBoardComponent {
 	private readonly orders = inject(OrderService);
 	private readonly routes = inject(RouteService);
 	private readonly apiAlert = inject(ApiAlertService);
-	private readonly alert = inject(AlertService);
 
 	// ----- Pestañas -----
 	protected readonly tab = signal<RoutesTab>('day');
@@ -94,7 +103,10 @@ export class RoutesBoardComponent {
 	protected readonly zone = signal('');
 	protected readonly status = signal(''); // solo aplica a Rutas del día
 	protected readonly day = signal(''); // solo aplica a Rutas de la semana: '1' (lunes) … '7' (domingo)
-	protected readonly selected = signal<RouteDayCard | null>(null);
+	protected readonly selected = signal<RouteDayCard | null>(null); // modal de detalle
+	protected readonly ordersCard = signal<RouteDayCard | null>(null); // modal "Vista principal"
+	protected readonly formOpen = signal(false); // modal "Nueva ruta" / "Editar ruta"
+	protected readonly formRoute = signal<RouteBasics | null>(null); // null = nueva
 
 	private readonly filters = computed<RouteFilters>(() => ({
 		search: this.search(),
@@ -113,8 +125,10 @@ export class RoutesBoardComponent {
 	protected readonly visibleDayCards = computed(() => filterRoutes(this.dayCards(), this.filters()));
 	protected readonly weekDays = computed(() => groupRoutesByDay(filterRoutes(this.weekCards(), this.filters()), this.day()));
 	protected readonly weekHasResults = computed(() => this.weekDays().some((day) => day.cards.length > 0));
+	protected readonly singleDay = computed(() => this.day() !== '');
 	protected readonly today = isoWeekdayBogota();
 	protected readonly skeletonCards = [0, 1, 2, 3, 4, 5];
+	protected readonly weekSkeletonColumns = [0, 1, 2, 3, 4, 5, 6];
 
 	constructor() {
 		void this.loadDay();
@@ -191,10 +205,41 @@ export class RoutesBoardComponent {
 	}
 
 	protected newRoute(): void {
-		this.alert.toast('La creación de rutas se habilita en el siguiente paso', 'info');
+		this.formRoute.set(null);
+		this.formOpen.set(true);
 	}
 
-	protected addToMain(_card: RouteDayCard): void {
-		this.alert.toast('La generación de pedidos desde la ruta se habilita en el siguiente paso', 'info');
+	// Desde el detalle: editar la ruta y sus clientes
+	protected editRoute(card: RouteDayCard): void {
+		this.selected.set(null);
+		this.formRoute.set(card.route);
+		this.formOpen.set(true);
+	}
+
+	// Si algo cambió, se recargan las rutas (los clientes guardados ya no sirven)
+	protected onFormClosed(changed: boolean): void {
+		this.formOpen.set(false);
+		if (!changed) return;
+		this.clientsByRoute.clear();
+		this.weekLoaded = false;
+		void this.loadDay();
+		if (this.tab() === 'week') void this.loadWeek();
+	}
+
+	// "Vista principal": abre el formulario para generar los pedidos de la ruta
+	protected addToMain(card: RouteDayCard): void {
+		this.ordersCard.set(card);
+	}
+
+	// Pedidos creados: la card pasa a "Agregado" sin recargar toda la pestaña
+	protected onOrdersCreated(result: RouteOrdersCreated): void {
+		this.dayCards.update((cards) => markRouteAdded(cards, result.id_route, result.created));
+		this.ordersCard.set(null);
+	}
+
+	// Otro gestor ya agregó la ruta: se recarga el estado real de las rutas del día
+	protected onOrdersOutdated(): void {
+		this.ordersCard.set(null);
+		void this.loadDay();
 	}
 }
