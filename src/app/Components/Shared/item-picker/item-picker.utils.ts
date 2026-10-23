@@ -8,20 +8,19 @@ import { normalizeText } from '@core/Utils/order-board.utils';
 
 export interface PickerOption {
 	id: number;
-	code?: string; // "001" (opcional: p. ej. los clientes no tienen código)
+	code: string; // "001"
 	label: string; // "Bolsa 6L"
-	meta?: string; // texto a la derecha, p. ej. el precio o el barrio
-	badge?: string; // etiqueta corta, p. ej. "Pactado"
+	meta?: string; // texto a la derecha, p. ej. el precio
 }
 
 // 0 = código exacto · 1 = código que empieza igual · 2 = nombre que empieza igual · 3 = contiene
 function rank(option: PickerOption, needle: string): number | null {
-	const code = normalizeText(option.code ?? '');
+	const code = normalizeText(option.code);
 	const label = normalizeText(option.label);
-	if (code && code === needle) return 0;
-	if (code && code.startsWith(needle)) return 1;
+	if (code === needle) return 0;
+	if (code.startsWith(needle)) return 1;
 	if (label.startsWith(needle)) return 2;
-	if (label.includes(needle) || (code && code.includes(needle))) return 3;
+	if (label.includes(needle) || code.includes(needle)) return 3;
 	return null;
 }
 

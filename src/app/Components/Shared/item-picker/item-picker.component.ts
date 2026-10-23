@@ -8,28 +8,12 @@
 // para cerrar la lista. Si se escribe un código exacto, Enter lo agrega de una vez.
 //
 //   <app-item-picker placeholder="Agregar producto…" [options]="options()" (picked)="add($event)" />
-//   options = [{ id: 3, code: '001', label: 'Bolsa 6L', meta: '$ 12.500', badge: 'Pactado' }, …]
-//
-// Búsqueda en el servidor (`remote`): no filtra aquí; avisa lo escrito con `(queryChange)`
-// (con espera de `debounceMs`) y muestra las `options` que le devuelvan, con `loading`.
-//
-//   <app-item-picker remote [options]="clientOptions()" [loading]="searching()"
-//                    (queryChange)="search($event)" (picked)="assign($event)" />
+//   options = [{ id: 3, code: '001', label: 'Bolsa 6L', meta: '$ 12.500' }, …]
 //
 // La lista se pinta dentro del componente (no en un overlay): así funciona también dentro
 // de un <dialog> modal, que vuelve inerte todo lo que está por fuera.
 
-import {
-	booleanAttribute,
-	ChangeDetectionStrategy,
-	Component,
-	computed,
-	DestroyRef,
-	inject,
-	input,
-	output,
-	signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
 import { IconComponent } from '@components/Shared/icon/icon.component';
 import { filterPickerOptions, PickerOption } from './item-picker.utils';
@@ -84,27 +68,14 @@ let nextId = 0;
 						(mouseenter)="activeIndex.set(i)"
 						(click)="pick(option)"
 					>
-						@if (option.code) {
-							<span class="w-10 shrink-0 font-semibold tabular-nums text-brand-900">{{ option.code }}</span>
-						}
+						<span class="w-10 shrink-0 font-semibold tabular-nums text-brand-900">{{ option.code }}</span>
 						<span class="min-w-0 flex-1 truncate">{{ option.label }}</span>
-						@if (option.badge) {
-							<span class="shrink-0 rounded-md bg-success-100 px-1.5 py-0.5 text-[11px] font-semibold text-success-800">
-								{{ option.badge }}
-							</span>
-						}
 						@if (option.meta) {
 							<span class="max-w-[45%] shrink-0 truncate tabular-nums text-slate-500">{{ option.meta }}</span>
 						}
 					</li>
 				} @empty {
-					<li class="px-3 py-2.5 text-sm text-slate-500">
-						@if (loading()) {
-							Buscando…
-						} @else {
-							{{ query() ? noMatchText() : emptyText() }}
-						}
-					</li>
+					<li class="px-3 py-2.5 text-sm text-slate-500">{{ query() ? noMatchText() : emptyText() }}</li>
 				}
 			</ul>
 		}
@@ -116,28 +87,14 @@ export class ItemPickerComponent {
 	readonly ariaLabel = input('');
 	readonly noMatchText = input('Ningún elemento coincide con la búsqueda.');
 	readonly emptyText = input('No hay más elementos para agregar.');
-	// Búsqueda en el servidor: no filtra localmente y avisa lo escrito con `queryChange`
-	readonly remote = input(false, { transform: booleanAttribute });
-	readonly loading = input(false);
-	readonly debounceMs = input(300);
-
 	readonly picked = output<number>();
-	readonly queryChange = output<string>();
 
 	protected readonly listId = `item-picker-${nextId++}`;
 	protected readonly query = signal('');
 	protected readonly open = signal(false);
 	protected readonly activeIndex = signal(0);
 
-	protected readonly filtered = computed(() =>
-		this.remote() ? [...this.options()] : filterPickerOptions(this.options(), this.query())
-	);
-
-	private timer: ReturnType<typeof setTimeout> | null = null;
-
-	constructor() {
-		inject(DestroyRef).onDestroy(() => this.cancelTimer());
-	}
+	protected readonly filtered = computed(() => filterPickerOptions(this.options(), this.query()));
 	protected readonly activeOption = computed(() => this.filtered()[this.activeIndex()] ?? null);
 
 	protected optionId(index: number): string {
@@ -148,27 +105,12 @@ export class ItemPickerComponent {
 		this.query.set(text);
 		this.activeIndex.set(0);
 		this.open.set(true);
-		if (this.remote()) {
-			this.cancelTimer();
-			this.timer = setTimeout(() => this.queryChange.emit(text.trim()), this.debounceMs());
-		}
 	}
 
 	protected pick(option: PickerOption): void {
 		this.picked.emit(option.id);
 		this.query.set('');
 		this.activeIndex.set(0);
-		if (this.remote()) {
-			this.cancelTimer();
-			this.queryChange.emit('');
-		}
-	}
-
-	private cancelTimer(): void {
-		if (this.timer) {
-			clearTimeout(this.timer);
-			this.timer = null;
-		}
 	}
 
 	protected onKeydown(event: KeyboardEvent): void {

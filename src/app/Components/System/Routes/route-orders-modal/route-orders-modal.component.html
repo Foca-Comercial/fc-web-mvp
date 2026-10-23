@@ -14,10 +14,9 @@
 					[value]="deliveryTime()"
 					(input)="deliveryTime.set($any($event.target).value)"
 				/>
-				<p class="mt-1 text-xs text-slate-500">Precargada con la hora de salida de la ruta.</p>
 			</div>
 			<div>
-				<label for="route-orders-driver" class="form-label">Domiciliario</label>
+				<label for="route-orders-driver" class="form-label">Domiciliario (opcional)</label>
 				<select id="route-orders-driver" class="form-input" (change)="setDriver($any($event.target).value)">
 					<option value="" [selected]="driverId() === null">Sin asignar</option>
 					@for (driver of drivers(); track driver.id_user_vehicle) {
@@ -26,17 +25,10 @@
 						</option>
 					}
 				</select>
-				<p class="mt-1 text-xs text-slate-500">Opcional: también se puede asignar después en el tablero.</p>
 			</div>
 		</div>
 
-		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">
-			Productos por cliente
-			<span class="font-medium normal-case tracking-normal text-slate-500">
-				· vienen sus productos pactados: ajusta cantidades, quita lo que no pidió o desmarca a quien no pidió. Otros
-				productos se agregan después en el tablero.
-			</span>
-		</h3>
+		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Productos por cliente</h3>
 
 		@if (template.clients.length === 0) {
 			<app-empty-state
@@ -54,12 +46,12 @@
 					<!-- Sin overflow-hidden: la lista del buscador debe poder salir de la sección -->
 					<section
 						class="rounded-xl border border-slate-200 transition-opacity"
-						[class.opacity-60]="hasOrder || skipped"
+						[class.opacity-60]="!editable"
 						[attr.aria-label]="'Pedido de ' + client.name"
 					>
 						<header
 							class="flex flex-wrap items-start justify-between gap-2 bg-slate-50 px-4 py-3"
-							[class]="editable || noProducts ? 'rounded-t-xl' : 'rounded-xl'"
+							[class]="editable ? 'rounded-t-xl' : 'rounded-xl'"
 						>
 							<div class="flex min-w-0 items-start gap-3">
 								@if (!hasOrder && !noProducts) {
@@ -89,7 +81,12 @@
 							@if (hasOrder) {
 								<app-status-badge tone="done">Ya tiene pedido de hoy</app-status-badge>
 							} @else if (noProducts) {
-								<app-status-badge tone="neutral">Sin precios pactados</app-status-badge>
+								<app-status-badge
+									tone="neutral"
+									hint="No se le puede generar pedido desde la ruta hasta que el administrador le registre precios pactados"
+								>
+									Sin precios pactados
+								</app-status-badge>
 							} @else if (skipped) {
 								<span class="text-sm font-semibold text-slate-500">No pidió hoy</span>
 							} @else {
@@ -99,12 +96,7 @@
 							}
 						</header>
 
-						@if (noProducts) {
-							<p class="rounded-b-xl border-t border-slate-200 px-4 py-3 text-xs text-slate-600">
-								No se le puede generar pedido desde la ruta porque no tiene precios pactados. Pídele al
-								administrador que los registre; mientras tanto, su pedido se toma aparte.
-							</p>
-						} @else if (editable) {
+						@if (editable) {
 							@let lines = linesOf(client);
 							@let removable = pickerOptions(client);
 							<div class="border-t border-slate-200 px-4 py-3">
@@ -176,7 +168,7 @@
 										}
 									</ul>
 								} @else {
-									<p class="mb-2 text-xs text-slate-500">Quitaste todos sus productos: a este cliente no se le creará pedido hoy.</p>
+									<p class="mb-2 text-xs text-slate-500">Sin productos: no se creará su pedido.</p>
 								}
 
 								<!-- Solo para volver a agregar uno de SUS productos pactados que se quitó -->
@@ -201,7 +193,7 @@
 					{{
 						allHaveOrders()
 							? 'Todos los clientes de la ruta ya tienen su pedido de hoy.'
-							: 'Ningún cliente de la ruta puede generar pedido hoy: los que faltan no tienen precios pactados.'
+							: 'Ningún cliente puede generar pedido hoy.'
 					}}
 				</p>
 			}

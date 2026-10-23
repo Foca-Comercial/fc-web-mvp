@@ -13,8 +13,8 @@
 // Los nombres y zonas de los clientes de cada ruta vienen de GET /routes/{id}/clients
 // (las rutas no los traen) y se guardan para no pedirlos dos veces entre pestañas.
 // Buscar y filtrar se hace en el cliente (ver route-board.utils).
-// "Nueva Ruta" y "Editar ruta y clientes" (desde el detalle) abren <app-route-form-modal>:
-// datos de la ruta y sus clientes.
+// Crear, editar y eliminar rutas es del panel de administración: aquí el gestor solo
+// agrega los pedidos de las rutas del día al tablero de despachos.
 
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
@@ -22,13 +22,11 @@ import { firstValueFrom, forkJoin, of } from 'rxjs';
 
 import { EmptyStateComponent } from '@components/Shared/empty-state/empty-state.component';
 import { FilterSelectComponent } from '@components/Shared/filter-select/filter-select.component';
-import { IconComponent } from '@components/Shared/icon/icon.component';
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.component';
 import { TabItem, TabsComponent } from '@components/Shared/tabs/tabs.component';
 import { RouteCardComponent } from '@components/System/Routes/route-card/route-card.component';
 import { RouteDetailModalComponent } from '@components/System/Routes/route-detail-modal/route-detail-modal.component';
-import { RouteFormModalComponent } from '@components/System/Routes/route-form-modal/route-form-modal.component';
 import { RouteOrdersModalComponent } from '@components/System/Routes/route-orders-modal/route-orders-modal.component';
 import { RouteWeekCardComponent } from '@components/System/Routes/route-week-card/route-week-card.component';
 import { RouteOrdersCreated } from '@core/Models/CoreModule/order.model';
@@ -43,7 +41,6 @@ import {
 	filterRoutes,
 	groupRoutesByDay,
 	markRouteAdded,
-	RouteBasics,
 	RouteDayCard,
 	RouteFilters,
 	routeStatusOptions,
@@ -60,13 +57,11 @@ type RoutesTab = 'day' | 'week';
 		NgTemplateOutlet,
 		EmptyStateComponent,
 		FilterSelectComponent,
-		IconComponent,
 		SearchInputComponent,
 		SkeletonComponent,
 		TabsComponent,
 		RouteCardComponent,
 		RouteDetailModalComponent,
-		RouteFormModalComponent,
 		RouteOrdersModalComponent,
 		RouteWeekCardComponent,
 	],
@@ -105,8 +100,6 @@ export class RoutesBoardComponent {
 	protected readonly day = signal(''); // solo aplica a Rutas de la semana: '1' (lunes) … '7' (domingo)
 	protected readonly selected = signal<RouteDayCard | null>(null); // modal de detalle
 	protected readonly ordersCard = signal<RouteDayCard | null>(null); // modal "Vista principal"
-	protected readonly formOpen = signal(false); // modal "Nueva ruta" / "Editar ruta"
-	protected readonly formRoute = signal<RouteBasics | null>(null); // null = nueva
 
 	private readonly filters = computed<RouteFilters>(() => ({
 		search: this.search(),
@@ -202,28 +195,6 @@ export class RoutesBoardComponent {
 
 	protected openDetail(card: RouteDayCard): void {
 		this.selected.set(card);
-	}
-
-	protected newRoute(): void {
-		this.formRoute.set(null);
-		this.formOpen.set(true);
-	}
-
-	// Desde el detalle: editar la ruta y sus clientes
-	protected editRoute(card: RouteDayCard): void {
-		this.selected.set(null);
-		this.formRoute.set(card.route);
-		this.formOpen.set(true);
-	}
-
-	// Si algo cambió, se recargan las rutas (los clientes guardados ya no sirven)
-	protected onFormClosed(changed: boolean): void {
-		this.formOpen.set(false);
-		if (!changed) return;
-		this.clientsByRoute.clear();
-		this.weekLoaded = false;
-		void this.loadDay();
-		if (this.tab() === 'week') void this.loadWeek();
 	}
 
 	// "Vista principal": abre el formulario para generar los pedidos de la ruta

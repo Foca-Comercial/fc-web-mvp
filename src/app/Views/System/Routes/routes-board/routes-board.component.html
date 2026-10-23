@@ -1,9 +1,9 @@
 <section class="space-y-2">
 	<h1 class="sr-only">Rutas constantes</h1>
 
-	<!-- Búsqueda, filtros y acciones -->
-	<div class="flex flex-wrap items-center justify-between gap-4 rounded-[10px] bg-white px-4 py-5 shadow-card sm:px-[25px] sm:py-[27px]">
-		<div class="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:gap-[23px]">
+	<!-- Búsqueda y filtros -->
+	<div class="rounded-[10px] bg-white px-4 py-5 shadow-card sm:px-[25px] sm:py-[27px]">
+		<div class="flex w-full flex-wrap items-center gap-3 lg:gap-[23px]">
 			<app-search-input class="w-full sm:w-87" placeholder="Buscar Ruta" [(value)]="search" />
 			<app-filter-select class="w-full sm:w-66" label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
 			<!-- Rutas del día: por estado · Rutas de la semana: por día -->
@@ -19,14 +19,6 @@
 				<app-filter-select class="w-full sm:w-66" label="Día" allLabel="Todos los días" [options]="dayOptions" [(value)]="day" />
 			}
 		</div>
-		<button
-			type="button"
-			class="flex h-[47px] w-full items-center justify-center gap-4 rounded-xl bg-brand-700 px-5 text-base font-medium text-white shadow-sm transition hover:bg-brand-800 active:bg-brand-950 sm:w-[155px]"
-			(click)="newRoute()"
-		>
-			<app-icon name="plus" size="size-5" [strokeWidth]="2" />
-			Nueva Ruta
-		</button>
 	</div>
 
 	<!-- Pestañas + contenido -->
@@ -118,8 +110,7 @@
 	</div>
 </section>
 
-<app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" (edit)="editRoute($event)" />
-<app-route-form-modal [open]="formOpen()" [route]="formRoute()" (closed)="onFormClosed($event)" />
+<app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" />
 <app-route-orders-modal
 	[card]="ordersCard()"
 	(closed)="ordersCard.set(null)"

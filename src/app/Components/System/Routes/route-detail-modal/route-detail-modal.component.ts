@@ -3,10 +3,9 @@
 // ==================================================
 // Modal de solo lectura con el detalle de una ruta del día: días en que sale, hora de
 // salida, estado y la lista de sus clientes. Usa los datos que ya cargó la vista, así
-// que no hace peticiones. Se abre cuando `card` trae una ruta, avisa con `(closed)` y con
-// `(edit)` pide abrir el formulario de la ruta.
+// que no hace peticiones. Se abre cuando `card` trae una ruta y avisa con `(closed)`.
 //
-//   <app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" (edit)="editRoute($event)" />
+//   <app-route-detail-modal [card]="selected()" (closed)="selected.set(null)" />
 
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
@@ -24,7 +23,6 @@ import { formatDepartureTime, ROUTE_STATUS_LABELS, RouteDayCard } from '@core/Ut
 export class RouteDetailModalComponent {
 	readonly card = input<RouteDayCard | null>(null);
 	readonly closed = output<void>();
-	readonly edit = output<RouteDayCard>();
 
 	protected readonly title = computed(() => this.card()?.route.name ?? 'Detalle de la ruta');
 	protected readonly departure = computed(() => formatDepartureTime(this.card()?.route.departure_time));
