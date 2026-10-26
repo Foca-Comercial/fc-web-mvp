@@ -138,3 +138,5 @@ nunca con `new Date().toISOString()` (UTC).
 Tailwind v4 se configura en `src/styles.css` (`@theme`). La paleta actual es
 **provisional** hasta definir la identidad visual de Foca Comercial: al recibirla se
 cambian solo los tokens `--color-brand-*` y la tipografía.
+
+> Vinculacion de commits con Discord
