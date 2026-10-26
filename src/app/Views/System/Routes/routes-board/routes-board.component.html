@@ -2,8 +2,8 @@
 	<h1 class="sr-only">Rutas constantes</h1>
 
 	<!-- Búsqueda y filtros -->
-	<div class="rounded-[10px] bg-white px-4 py-5 shadow-card sm:px-[25px] sm:py-[27px]">
-		<div class="flex w-full flex-wrap items-center gap-3 lg:gap-[23px]">
+	<div class="rounded-2xl bg-white p-4 shadow-card">
+		<div class="flex w-full flex-wrap items-center gap-3">
 			<app-search-input class="w-full sm:w-87" placeholder="Buscar Ruta" [(value)]="search" />
 			<app-filter-select class="w-full sm:w-66" label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
 			<!-- Rutas del día: por estado · Rutas de la semana: por día -->
@@ -122,14 +122,14 @@
 <ng-template #skeleton>
 	<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6" aria-busy="true" aria-label="Cargando rutas">
 		@for (item of skeletonCards; track item) {
-			<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-[13px]">
+			<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-3">
 				<div class="flex h-15 items-center gap-2.5">
-					<app-skeleton class="size-[50px] rounded-full" />
+					<app-skeleton class="size-12 rounded-full" />
 					<app-skeleton class="h-4 w-40 rounded-md" />
 				</div>
 				<div class="grid grid-cols-2 gap-5">
-					<app-skeleton class="h-[79px] rounded-2xl" />
-					<app-skeleton class="h-[79px] rounded-2xl" />
+					<app-skeleton class="h-20 rounded-2xl" />
+					<app-skeleton class="h-20 rounded-2xl" />
 				</div>
 				<app-skeleton class="h-4 w-full rounded-md" />
 				<app-skeleton class="h-4 w-2/3 rounded-md" />
@@ -146,7 +146,7 @@
 	<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7" aria-busy="true" aria-label="Cargando rutas de la semana">
 		@for (column of weekSkeletonColumns; track column) {
 			<div class="flex flex-col gap-2 rounded-xl bg-white/35 p-1.5">
-				<app-skeleton class="h-[52px] rounded-lg" />
+				<app-skeleton class="h-13 rounded-lg" />
 				<app-skeleton class="h-28 rounded-xl" />
 				@if (column % 2 === 0) {
 					<app-skeleton class="h-28 rounded-xl" />

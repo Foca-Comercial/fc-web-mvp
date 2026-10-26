@@ -166,6 +166,8 @@ export interface RouteOfDay {
 	departure_time: TimeString;
 	days_week: number[];
 	clients_count: number;
+	client_names: string[]; // nombres de esos clientes (activos y registrados), A-Z
+	zones: string[]; // zonas distintas de esos clientes, A-Z
 	orders_count: number; // pedidos de ese día ya generados desde la ruta
 }
 

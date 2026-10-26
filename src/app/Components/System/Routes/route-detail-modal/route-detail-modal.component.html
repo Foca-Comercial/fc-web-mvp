@@ -20,36 +20,52 @@
 			</div>
 		</dl>
 
-		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Clientes ({{ card.clients.length }})</h3>
-		@if (card.clients.length > 0) {
-			<div class="overflow-x-auto rounded-xl border border-slate-200">
-				<table class="w-full min-w-140 border-collapse text-sm">
-					<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
-						<tr>
-							<th scope="col" class="px-4 py-2.5 text-left font-bold">Cliente</th>
-							<th scope="col" class="px-4 py-2.5 text-left font-bold">Teléfono</th>
-							<th scope="col" class="px-4 py-2.5 text-left font-bold">Dirección</th>
-							<th scope="col" class="px-4 py-2.5 text-left font-bold">Barrio · Zona</th>
-						</tr>
-					</thead>
-					<tbody>
-						@for (client of card.clients; track client.id_client_route) {
-							<tr class="border-t border-slate-200">
-								<td class="px-4 py-2.5 font-semibold text-slate-900">{{ client.name }}</td>
-								<td class="px-4 py-2.5 tabular-nums text-slate-700">{{ client.phone || '—' }}</td>
-								<td class="px-4 py-2.5 text-slate-700">{{ client.address || '—' }}</td>
-								<td class="px-4 py-2.5 text-slate-700">{{ client.neighborhood_name }} · {{ client.zone_name }}</td>
+		@let state = clients();
+		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">
+			Clientes {{ state.status === 'ready' ? '(' + state.clients.length + ')' : '' }}
+		</h3>
+		@if (state.status === 'ready') {
+			@if (state.clients.length > 0) {
+				<div class="overflow-x-auto rounded-xl border border-slate-200">
+					<table class="w-full min-w-140 border-collapse text-sm">
+						<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
+							<tr>
+								<th scope="col" class="px-4 py-2.5 text-left font-bold">Cliente</th>
+								<th scope="col" class="px-4 py-2.5 text-left font-bold">Teléfono</th>
+								<th scope="col" class="px-4 py-2.5 text-left font-bold">Dirección</th>
+								<th scope="col" class="px-4 py-2.5 text-left font-bold">Barrio · Zona</th>
 							</tr>
-						}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							@for (client of state.clients; track client.id_client_route) {
+								<tr class="border-t border-slate-200">
+									<td class="px-4 py-2.5 font-semibold text-slate-900">{{ client.name }}</td>
+									<td class="px-4 py-2.5 tabular-nums text-slate-700">{{ client.phone || '—' }}</td>
+									<td class="px-4 py-2.5 text-slate-700">{{ client.address || '—' }}</td>
+									<td class="px-4 py-2.5 text-slate-700">{{ client.neighborhood_name }} · {{ client.zone_name }}</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			} @else {
+				<app-empty-state
+					icon="inbox"
+					title="La ruta no tiene clientes"
+					description="Asigna clientes a la ruta para poder generar sus pedidos."
+				/>
+			}
+		} @else if (state.status === 'error') {
+			<div class="flex flex-col items-center gap-3 py-6 text-center" role="alert">
+				<p class="max-w-sm text-sm text-slate-600">{{ state.message }}</p>
+				<button type="button" class="btn-secondary" (click)="retry()">Reintentar</button>
 			</div>
 		} @else {
-			<app-empty-state
-				icon="inbox"
-				title="La ruta no tiene clientes"
-				description="Asigna clientes a la ruta para poder generar sus pedidos."
-			/>
+			<div class="space-y-2" aria-busy="true" aria-label="Cargando clientes de la ruta">
+				<app-skeleton class="h-10 w-full rounded-md" />
+				<app-skeleton class="h-10 w-full rounded-md" />
+				<app-skeleton class="h-10 w-full rounded-md" />
+			</div>
 		}
 	}
 

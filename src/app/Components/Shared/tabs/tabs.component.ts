@@ -28,9 +28,9 @@ const VARIANTS: Record<TabsVariant, { list: string; active: string; inactive: st
 	slate: {
 		list: 'flex gap-1',
 		active:
-			'flex-1 rounded-t-xl bg-slate-300 px-4 py-6 text-lg font-bold leading-8 text-slate-600 transition sm:flex-none sm:min-w-[346px] sm:px-8 sm:text-2xl xl:text-[32px]',
+			'flex-1 rounded-t-xl bg-slate-300 px-4 py-6 text-lg font-bold leading-8 text-slate-600 transition sm:flex-none sm:min-w-86 sm:px-8 sm:text-2xl xl:text-3xl',
 		inactive:
-			'flex-1 rounded-t-xl bg-slate-300/45 px-4 py-6 text-lg font-bold leading-8 text-slate-500 transition hover:bg-slate-300/75 hover:text-slate-600 sm:flex-none sm:min-w-[346px] sm:px-8 sm:text-2xl xl:text-[32px]',
+			'flex-1 rounded-t-xl bg-slate-300/45 px-4 py-6 text-lg font-bold leading-8 text-slate-500 transition hover:bg-slate-300/75 hover:text-slate-600 sm:flex-none sm:min-w-86 sm:px-8 sm:text-2xl xl:text-3xl',
 		count: 'bg-white/70 text-slate-700',
 	},
 };

@@ -17,7 +17,13 @@
 			</div>
 			<div>
 				<label for="route-orders-driver" class="form-label">Domiciliario (opcional)</label>
-				<select id="route-orders-driver" class="form-input" (change)="setDriver($any($event.target).value)">
+				<select
+					id="route-orders-driver"
+					class="form-input"
+					[disabled]="driversFailed()"
+					[attr.aria-describedby]="driversFailed() ? 'route-orders-driver-error' : null"
+					(change)="setDriver($any($event.target).value)"
+				>
 					<option value="" [selected]="driverId() === null">Sin asignar</option>
 					@for (driver of drivers(); track driver.id_user_vehicle) {
 						<option [value]="driver.id_user_vehicle" [selected]="driverId() === driver.id_user_vehicle">
@@ -25,6 +31,11 @@
 						</option>
 					}
 				</select>
+				@if (driversFailed()) {
+					<p id="route-orders-driver-error" class="mt-1.5 text-xs font-semibold text-warning-700">
+						No se pudo cargar la lista de domiciliarios. Los pedidos se crean sin asignar y se asignan después en el tablero.
+					</p>
+				}
 			</div>
 		</div>
 

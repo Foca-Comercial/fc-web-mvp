@@ -61,7 +61,8 @@ type FormState =
 	| { status: 'idle' }
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
-	| { status: 'ready'; template: RouteOrderTemplate; drivers: DriverVehicleDropdown[] };
+	// `drivers` es null si no se pudo cargar la lista: es opcional y no bloquea el formulario
+	| { status: 'ready'; template: RouteOrderTemplate; drivers: DriverVehicleDropdown[] | null };
 
 const IDLE: FormState = { status: 'idle' };
 const LOADING: FormState = { status: 'loading' };
@@ -104,7 +105,11 @@ export class RouteOrdersModalComponent {
 			switchMap(([id]) =>
 				id === null
 					? of(IDLE)
-					: forkJoin({ template: this.orders.getRouteTemplate(id), drivers: this.userVehicles.getDriversDropdown() }).pipe(
+					: forkJoin({
+							template: this.orders.getRouteTemplate(id),
+							// Si solo falla la lista de domiciliarios, el formulario sigue (sin asignar)
+							drivers: this.userVehicles.getDriversDropdown().pipe(catchError(() => of(null))),
+						}).pipe(
 							map(({ template, drivers }): FormState => ({ status: 'ready', template, drivers })),
 							startWith(LOADING),
 							catchError((error) => of<FormState>({ status: 'error', message: parseApiError(error).message }))
@@ -120,7 +125,11 @@ export class RouteOrdersModalComponent {
 	});
 	protected readonly drivers = computed(() => {
 		const state = this.state();
-		return state.status === 'ready' ? state.drivers : [];
+		return state.status === 'ready' ? (state.drivers ?? []) : [];
+	});
+	protected readonly driversFailed = computed(() => {
+		const state = this.state();
+		return state.status === 'ready' && state.drivers === null;
 	});
 
 	// ----- Formulario (se reinicia con cada plantilla nueva) -----

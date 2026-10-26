@@ -7,6 +7,7 @@
 import { OrderSummary } from '@core/Models/CoreModule/order.model';
 import { OrderState } from '@core/Models/Shared/api-types.model';
 import { computeDeliveryStatus } from './delivery-status.utils';
+import { normalizeText } from './text.utils';
 
 export const BOARD_PAGE_SIZE = 8;
 
@@ -38,15 +39,6 @@ export const BOARD_STATUS_LABELS: Record<BoardStatusKey, string> = {
 // Estados que pueden aparecer en cada pestaña (según lo que devuelve cada endpoint)
 export const PENDING_TAB_STATUSES: readonly BoardStatusKey[] = ['pending', 'soon', 'late', 'cancelled'];
 export const DISPATCHED_TAB_STATUSES: readonly BoardStatusKey[] = ['dispatched', 'delivered'];
-
-// Minúsculas y sin tildes: "Peña" coincide con "pena"
-export function normalizeText(value: string): string {
-	return value
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.toLowerCase()
-		.trim();
-}
 
 export function boardStatusKey(row: OrderSummary, now: Date): BoardStatusKey {
 	switch (row.state) {

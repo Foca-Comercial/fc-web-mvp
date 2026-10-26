@@ -1,14 +1,14 @@
 // ==================================================
 // Rutas del día y de la semana: estado, filtros y formato de las cards
 // ==================================================
-// La API entrega las rutas (/orders/routes-of-day y /routes/cards) sin los nombres ni las
-// zonas de sus clientes; esos llegan aparte (/routes/{id}/clients) y se juntan en
-// `RouteCardInfo`. Buscar, filtrar y agrupar se hace aquí, con funciones puras.
+// La API entrega las rutas (/orders/routes-of-day y /routes/cards) ya con los nombres y las
+// zonas de sus clientes, así que no hace falta pedir los clientes ruta por ruta. Buscar,
+// filtrar y agrupar se hace aquí, con funciones puras.
 
 import { RouteOfDay } from '@core/Models/CoreModule/order.model';
-import { RouteCard, RouteClient } from '@core/Models/ParametersModule/parameters.model';
+import { RouteCard } from '@core/Models/ParametersModule/parameters.model';
 import { DAY_WEEK_LABELS, DayWeek } from '@core/Models/Shared/api-types.model';
-import { normalizeText } from './order-board.utils';
+import { normalizeText } from './text.utils';
 
 // Una ruta del día queda "Agregada" cuando ya se generaron sus pedidos del día (pasan al
 // tablero de despachos, la vista principal)
@@ -20,14 +20,16 @@ export const ROUTE_STATUS_LABELS: Record<RouteDayStatus, string> = {
 };
 
 // Lo que tienen en común las rutas del día y las de /routes/cards
-export type RouteBasics = Pick<RouteOfDay, 'id_route' | 'name' | 'departure_time' | 'days_week' | 'clients_count'>;
+export type RouteBasics = Pick<
+	RouteOfDay,
+	'id_route' | 'name' | 'departure_time' | 'days_week' | 'clients_count' | 'client_names' | 'zones'
+>;
 
 // Datos de una card. `status` es null en las cards informativas (Rutas de la semana):
 // sin estado ni acciones.
 export interface RouteCardInfo<R extends RouteBasics = RouteBasics> {
 	route: R;
 	status: RouteDayStatus | null;
-	clients: RouteClient[]; // solo los clientes activos
 	clientNames: string; // "Transporte MASA, Constructora Alpha, …"
 	zones: string[]; // zonas distintas de sus clientes
 }
@@ -60,21 +62,16 @@ export function markRouteAdded(cards: readonly RouteDayCard[], idRoute: number, 
 	});
 }
 
-function clientsInfo(clients: readonly RouteClient[]): Pick<RouteCardInfo, 'clients' | 'clientNames' | 'zones'> {
-	const active = clients.filter((client) => client.active);
-	return {
-		clients: active,
-		clientNames: active.map((client) => client.name).join(', '),
-		zones: [...new Set(active.map((client) => client.zone_name).filter(Boolean))],
-	};
+function clientsInfo(route: RouteBasics): Pick<RouteCardInfo, 'clientNames' | 'zones'> {
+	return { clientNames: route.client_names.join(', '), zones: route.zones };
 }
 
-export function buildRouteCard(route: RouteOfDay, clients: readonly RouteClient[]): RouteDayCard {
-	return { route, status: routeDayStatus(route), ...clientsInfo(clients) };
+export function buildRouteCard(route: RouteOfDay): RouteDayCard {
+	return { route, status: routeDayStatus(route), ...clientsInfo(route) };
 }
 
-export function buildWeekRouteCard(route: RouteCard, clients: readonly RouteClient[]): RouteWeekCard {
-	return { route, status: null, ...clientsInfo(clients) };
+export function buildWeekRouteCard(route: RouteCard): RouteWeekCard {
+	return { route, status: null, ...clientsInfo(route) };
 }
 
 // Busca por nombre de la ruta o de cualquiera de sus clientes

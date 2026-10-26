@@ -4,7 +4,7 @@
 // Busca por código o por nombre, sin tildes ni mayúsculas. El código pesa más: si se
 // escribe "001" exacto, esa opción queda primera y Enter la elige de una vez.
 
-import { normalizeText } from '@core/Utils/order-board.utils';
+import { normalizeText } from '@core/Utils/text.utils';
 
 export interface PickerOption {
 	id: number;

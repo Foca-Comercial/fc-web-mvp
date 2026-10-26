@@ -10,15 +10,15 @@
 //     en un tablero con una columna por día (lunes a domingo) y cards compactas, solo
 //     informativas. Se carga la primera vez que se abre la pestaña. Tiene su propio
 //     filtro por día: con un día elegido, su columna ocupa todo el ancho.
-// Los nombres y zonas de los clientes de cada ruta vienen de GET /routes/{id}/clients
-// (las rutas no los traen) y se guardan para no pedirlos dos veces entre pestañas.
+// Las dos listas ya traen los nombres y zonas de los clientes de cada ruta; la lista
+// completa de clientes (teléfono, dirección…) la pide el modal de detalle al abrirse.
 // Buscar y filtrar se hace en el cliente (ver route-board.utils).
 // Crear, editar y eliminar rutas es del panel de administración: aquí el gestor solo
 // agrega los pedidos de las rutas del día al tablero de despachos.
 
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { firstValueFrom, forkJoin, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import { EmptyStateComponent } from '@components/Shared/empty-state/empty-state.component';
 import { FilterSelectComponent } from '@components/Shared/filter-select/filter-select.component';
@@ -30,7 +30,6 @@ import { RouteDetailModalComponent } from '@components/System/Routes/route-detai
 import { RouteOrdersModalComponent } from '@components/System/Routes/route-orders-modal/route-orders-modal.component';
 import { RouteWeekCardComponent } from '@components/System/Routes/route-week-card/route-week-card.component';
 import { RouteOrdersCreated } from '@core/Models/CoreModule/order.model';
-import { RouteClient } from '@core/Models/ParametersModule/parameters.model';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { RouteService } from '@core/Service/ParametersModule/route.service';
@@ -90,9 +89,6 @@ export class RoutesBoardComponent {
 	protected readonly weekFailed = signal(false);
 	private weekLoaded = false;
 
-	// Clientes por ruta, compartidos entre las dos pestañas
-	private readonly clientsByRoute = new Map<number, RouteClient[]>();
-
 	// ----- Filtros -----
 	protected readonly search = signal('');
 	protected readonly zone = signal('');
@@ -139,8 +135,7 @@ export class RoutesBoardComponent {
 		this.dayLoading.set(true);
 		try {
 			const routes = await firstValueFrom(this.orders.getRoutesOfDay());
-			await this.loadClients(routes.map((route) => route.id_route));
-			this.dayCards.set(routes.map((route) => buildRouteCard(route, this.clientsByRoute.get(route.id_route) ?? [])));
+			this.dayCards.set(routes.map(buildRouteCard));
 			this.dayFailed.set(false);
 		} catch (error) {
 			this.dayFailed.set(true);
@@ -154,8 +149,7 @@ export class RoutesBoardComponent {
 		this.weekLoading.set(true);
 		try {
 			const routes = await firstValueFrom(this.routes.getCards(true));
-			await this.loadClients(routes.map((route) => route.id_route));
-			this.weekCards.set(routes.map((route) => buildWeekRouteCard(route, this.clientsByRoute.get(route.id_route) ?? [])));
+			this.weekCards.set(routes.map(buildWeekRouteCard));
 			this.weekFailed.set(false);
 			this.weekLoaded = true;
 		} catch (error) {
@@ -164,15 +158,6 @@ export class RoutesBoardComponent {
 		} finally {
 			this.weekLoading.set(false);
 		}
-	}
-
-	// Pide en paralelo los clientes de las rutas que aún no se tienen
-	private async loadClients(routeIds: number[]): Promise<void> {
-		const missing = [...new Set(routeIds)].filter((id) => !this.clientsByRoute.has(id));
-		const clients = await firstValueFrom(
-			missing.length ? forkJoin(missing.map((id) => this.routes.getClients(id))) : of([])
-		);
-		missing.forEach((id, index) => this.clientsByRoute.set(id, clients[index] ?? []));
 	}
 
 	protected retry(): void {

@@ -49,7 +49,7 @@ import { formatDepartureTime, RouteWeekCard } from '@core/Utils/route-board.util
 			<p class="mt-2 line-clamp-2 break-words text-xs text-slate-500" [title]="card().clientNames">{{ card().clientNames }}</p>
 		}
 
-		<p class="mt-2 w-fit max-w-full truncate rounded-md bg-brand-100 px-1.5 py-0.5 text-[11px] font-medium text-brand-900" title="Días en que sale">
+		<p class="mt-2 w-fit max-w-full truncate rounded-md bg-brand-100 px-1.5 py-0.5 text-xs font-medium text-brand-900" title="Días en que sale">
 			{{ card().route.days_week | daysWeek }}
 		</p>
 	`,

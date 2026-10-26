@@ -1,13 +1,13 @@
 <!-- Cabecera: logo, nombre y estado -->
 <div class="flex h-15 items-center justify-between gap-3">
 	<div class="flex min-w-0 items-center gap-2.5">
-		<span class="grid size-[50px] shrink-0 place-items-center rounded-full bg-brand-900">
-			<app-icon name="map" size="size-[30px]" class="text-white" />
+		<span class="grid size-12 shrink-0 place-items-center rounded-full bg-brand-900">
+			<app-icon name="map" size="size-7" class="text-white" />
 		</span>
 		<h3 class="truncate text-base font-semibold leading-6 text-slate-900" [title]="card().route.name">{{ card().route.name }}</h3>
 	</div>
 	<span
-		class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border-[0.5px] px-2 text-sm leading-6 whitespace-nowrap"
+		class="grid h-8 w-26 shrink-0 place-items-center rounded-3xl border px-2 text-sm leading-6 whitespace-nowrap"
 		[class]="added() ? 'border-slate-600 bg-slate-200 text-slate-600' : 'border-success-700 bg-success-200 text-success-700'"
 	>
 		{{ statusLabel() }}
@@ -16,14 +16,14 @@
 
 <!-- Cajas informativas -->
 <dl class="grid grid-cols-2 gap-5">
-	<div class="flex min-h-[79px] flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
+	<div class="flex min-h-20 flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
 		<dt class="flex items-center gap-2 text-sm leading-6 text-slate-600">
 			<app-icon name="building-office-2" size="size-8" class="text-slate-900" />
 			N° de clientes
 		</dt>
 		<dd class="text-lg font-semibold leading-6 tabular-nums text-slate-900">{{ card().route.clients_count }}</dd>
 	</div>
-	<div class="flex min-h-[79px] flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
+	<div class="flex min-h-20 flex-col justify-center gap-0.5 rounded-2xl bg-brand-200 px-4 py-2.5">
 		<dt class="flex items-center gap-2 text-sm leading-6 text-slate-600">
 			<app-icon name="clock" size="size-8" class="text-slate-900" />
 			Hora de salida
@@ -33,7 +33,7 @@
 </dl>
 
 <!-- Clientes que contiene -->
-<p class="flex min-h-[69px] items-start gap-1 text-base leading-6">
+<p class="flex min-h-17 items-start gap-1 text-base leading-6">
 	<span class="shrink-0 font-semibold text-slate-900">Contiene:</span>
 	@if (card().clientNames) {
 		<span class="line-clamp-2 font-medium text-slate-600" [title]="card().clientNames">{{ card().clientNames }}</span>
@@ -57,7 +57,7 @@
 	@if (added()) {
 		<button
 			type="button"
-			class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-[#b3b3b3] px-1 text-base font-semibold text-slate-600"
+			class="flex h-11 cursor-not-allowed items-center justify-center gap-1 rounded-2xl bg-slate-200 px-1 text-base font-semibold text-slate-500"
 			disabled
 			title="Los pedidos de esta ruta ya están en el tablero de despachos"
 		>

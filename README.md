@@ -43,8 +43,11 @@ quedan en dominios distintos, el backend debe configurar CORS (y exponer
 src/app/
 ├── Components/                 # Componentes reutilizables (no son páginas)
 │   ├── Layout/                 # app-header, app-sidebar
-│   ├── Shared/                 # loader, 403, 404, coming-soon (provisional)
-│   └── System/<Vista>/         # Componentes propios de cada vista (tablas, modales…)
+│   ├── Shared/                 # Piezas genéricas, sin lógica de negocio: icon, modal, tabs,
+│   │                           #   data-table, pagination, search-input, filter-select,
+│   │                           #   icon-button, status-badge, skeleton, empty-state,
+│   │                           #   item-picker, loader, 403, 404, coming-soon (provisional)
+│   └── System/<Vista>/         # Componentes propios de cada vista (cards, modales de detalle…)
 ├── Core/
 │   ├── Constants/              # roles, rutas, endpoints, etiquetas y mensajes de validación
 │   ├── Directives/             # appNumericInput, appLogoutButton
@@ -64,11 +67,14 @@ src/app/
 │   │   ├── Auth/               # AuthService, TokenStorageService, RoleRedirectService
 │   │   ├── Navigation/         # menú lateral filtrado por rol
 │   │   └── <Módulo>/           # un servicio por entidad
-│   └── Utils/                  # errores de API, fechas Bogotá, dinero, query params, descargas
+│   └── Utils/                  # errores de API, fechas Bogotá, dinero, texto, query params,
+│                               #   descargas y la lógica pura de cada vista (*-board.utils)
 ├── Views/                      # Páginas (las que aparecen en el ruteo)
 │   ├── Auth/login/
 │   └── System/                 # system-shell (layout) + system.routes.ts
-│       └── Orders/ Routes/ History/ Closure/ Admin/   # vistas por construir
+│       ├── Orders/orders-board/    # Tablero de despachos (construido; faltan sus acciones)
+│       ├── Routes/routes-board/    # Rutas del día y de la semana (construido)
+│       └── History/ Closure/ Admin/   # vistas por construir
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
 └── app.routes.ts
 ```
@@ -119,9 +125,9 @@ if (res.ok) this.reload();
 - Los roles salen del JWT (no hay endpoint `/me`).
 - El access token vive **solo en memoria**; al recargar, `restoreSession()` lo recupera con
   el refresh token antes del primer ruteo.
-- **Provisional:** el refresh token se guarda en `localStorage` porque la API lo devuelve en
-  el body. Cuando el backend lo mueva a cookie `httpOnly`, solo cambian
-  `TokenStorageService` y `AuthService`.
+- El refresh token viaja en una cookie `httpOnly` (ruta `/api/v1/auth`) que pone y borra la
+  API; el front no la ve. Solo se guarda el nombre de usuario (`fc.username`) como pista de
+  que hubo sesión, para decidir si vale la pena intentar el refresh al cargar.
 - Un solo refresh en vuelo a la vez (la API trata dos refresh con el mismo token como robo y
   cierra todas las sesiones).
 
@@ -135,8 +141,37 @@ Todo "hoy" se calcula en hora de Bogotá con `todayBogota()` (`Core/Utils/date.u
 nunca con `new Date().toISOString()` (UTC).
 
 ### Estilos
-Tailwind v4 se configura en `src/styles.css` (`@theme`). La paleta actual es
-**provisional** hasta definir la identidad visual de Foca Comercial: al recibirla se
-cambian solo los tokens `--color-brand-*` y la tipografía.
+Tailwind v4 se configura en `src/styles.css` (`@theme`): paleta de marca (`brand`, `success`,
+`warning`, `danger`, neutros `slate`), fuente Inter y los estilos de login/vidrio.
 
-> Vinculacion de commits con Discord
+- Se usan los **tokens y la escala de Tailwind** (`rounded-2xl`, `p-4`, `bg-slate-200`, `size-12`).
+  Nada de colores en hexadecimal ni de medidas en píxeles entre corchetes (`bg-[#b3b3b3]`,
+  `px-[25px]`): si falta una medida, se usa la más cercana de la escala o se agrega un token.
+  Los valores entre corchetes solo se aceptan para estructura (`grid-cols-[…]`, `max-h-[90dvh]`).
+- Las clases de componente de `styles.css` (`.btn-primary`, `.form-input`, `.glass`…) no se
+  pueden sobrescribir con utilidades; los componentes compartidos usan `:where()` dentro
+  de `@layer components` para que las utilidades sí los pisen.
+- Los iconos son Heroicons (outline) con `<app-icon>`; para sumar uno se pega su `d` en
+  `Components/Shared/icon/icons.ts`.
+
+## Vistas construidas
+
+Todas cuelgan de `system.routes.ts` con `loadComponent` y `roleGuard`. La lógica de buscar,
+filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.ts` (reciben
+`now` o los datos, sin tocar el reloj ni la red) y los componentes solo las conectan a signals.
+
+| Vista | Ruta | Datos | Notas |
+|---|---|---|---|
+| Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente; se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). |
+| Rutas | `/rutas` | `GET /orders/routes-of-day` y `GET /routes/cards` (ya con nombres y zonas de clientes) | "Vista principal" crea los pedidos del día de la ruta (`POST /orders/routes/{id}`); el precio lo pone la API (el pactado del cliente). El detalle pide `GET /routes/{id}/clients` al abrirse. |
+
+### Componentes compartidos con reglas propias
+- **`<app-modal>`**: `<dialog>` nativo; se controla con `[(open)]`. Con contenido que hace
+  peticiones, envolverlo en `@if` o resolver la carga dentro del componente del modal
+  (ver `order-detail-modal`). Si encima se muestra una alerta de SweetAlert, hay que
+  ocultar el modal mientras tanto (ver `route-orders-modal`): un `<dialog>` modal vuelve
+  inerte todo lo demás.
+- **`<app-tabs>`**: variante `default` (pestañas blancas del tablero) y `slate` (Rutas).
+- **`<app-item-picker>`**: buscador desplegable para agregar elementos a una lista.
+- **`<app-data-table>` + `tbody[app-table-skeleton]`**: tabla con el estilo de la marca y su
+  estado de carga.

@@ -50,6 +50,8 @@ export interface Route extends Required<RouteCreate> {
 // Vista de Rutas: GET /routes/cards
 export interface RouteCard extends Route {
 	clients_count: number; // clientes activos asignados
+	client_names: string[]; // nombres de esos clientes, A-Z
+	zones: string[]; // zonas distintas de esos clientes, A-Z
 }
 
 // POST /routes/{id}/clients

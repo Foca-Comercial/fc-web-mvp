@@ -17,7 +17,7 @@ import { formatDepartureTime, ROUTE_STATUS_LABELS, RouteDayCard } from '@core/Ut
 	selector: 'app-route-card',
 	imports: [IconComponent],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	host: { class: 'flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-[13px] shadow-card' },
+	host: { class: 'flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-3 shadow-card' },
 	templateUrl: './route-card.component.html',
 })
 export class RouteCardComponent {
