@@ -42,11 +42,15 @@ import { orderCapabilities } from '@core/Utils/order-actions.utils';
 import {
 	BOARD_PAGE_SIZE,
 	BoardFilters,
+	BoardSort,
+	SortKey,
 	DISPATCHED_TAB_STATUSES,
 	PENDING_TAB_STATUSES,
 	driverOptions,
 	filterOrders,
+	nextSort,
 	paginate,
+	sortOrders,
 	statusOptions,
 	totalPages,
 	zoneOptions,
@@ -105,6 +109,7 @@ export class OrdersBoardComponent {
 	protected readonly zone = signal('');
 	protected readonly status = signal('');
 	protected readonly driver = signal('');
+	protected readonly sort = signal<BoardSort | null>(null);
 	protected readonly selectedId = signal<number | null>(null);
 	protected readonly newOrderOpen = signal(false);
 
@@ -130,17 +135,18 @@ export class OrdersBoardComponent {
 
 	// Depende de `clock.now()`: el filtro de Estado (Próximo / Retrasado) se reevalúa con el reloj
 	private readonly filtered = computed(() => filterOrders(this.activeRows(), this.filters(), this.clock.now()));
+	private readonly sorted = computed(() => sortOrders(this.filtered(), this.sort()));
 	protected readonly pages = computed(() => totalPages(this.filtered().length));
 
 	// Vuelve a la página 1 al cambiar de pestaña o de filtros; si el refresco deja menos
 	// páginas que la actual, se queda en la última
 	protected readonly page = linkedSignal<{ key: string; pages: number }, number>({
-		source: () => ({ key: JSON.stringify([this.tab(), this.filters()]), pages: this.pages() }),
+		source: () => ({ key: JSON.stringify([this.tab(), this.filters(), this.sort()]), pages: this.pages() }),
 		computation: (source, previous) =>
 			previous && previous.source.key === source.key ? Math.min(previous.value, source.pages) : 1,
 	});
 
-	protected readonly visibleRows = computed(() => paginate(this.filtered(), this.page()));
+	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page()));
 	protected readonly columnCount = 7;
 	protected readonly OrderState = OrderState;
 	protected readonly orderCapabilities = orderCapabilities;
@@ -225,6 +231,21 @@ export class OrdersBoardComponent {
 		this.tab.set(id as BoardTab);
 		// Los estados cambian de una pestaña a otra
 		this.status.set('');
+	}
+
+	protected toggleSort(key: SortKey): void {
+		this.sort.update((current) => nextSort(current, key));
+	}
+
+	protected ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+		const sort = this.sort();
+		if (sort?.key !== key) return 'none';
+		return sort.direction === 'asc' ? 'ascending' : 'descending';
+	}
+
+	protected sortIcon(key: SortKey): 'chevron-up' | 'chevron-down' | 'chevron-up-down' {
+		const state = this.ariaSort(key);
+		return state === 'ascending' ? 'chevron-up' : state === 'descending' ? 'chevron-down' : 'chevron-up-down';
 	}
 
 	protected clearFilters(): void {
@@ -315,7 +336,21 @@ export class OrdersBoardComponent {
 	protected onOrderCreated(order: OrderWithDetails): void {
 		this.tab.set('pending');
 		this.clearFilters();
-		this.alert.toast(`Pedido ${order.purchase_order} registrado`);
 		void this.load('change');
+		void this.offerAnotherOrder(order);
+	}
+
+	// Tras registrar, pregunta si se quiere cargar otro y reabre el formulario en blanco
+	private async offerAnotherOrder(order: OrderWithDetails): Promise<void> {
+		// Deja que el modal termine de cerrarse: una alerta sobre un <dialog> modal quedaría inerte
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		const another = await this.alert.confirm({
+			title: `Pedido ${order.purchase_order} registrado`,
+			text: '¿Quieres registrar otro pedido?',
+			icon: 'success',
+			confirmText: 'Sí, registrar otro',
+			cancelText: 'No, listo',
+		});
+		if (another) this.newOrderOpen.set(true);
 	}
 }

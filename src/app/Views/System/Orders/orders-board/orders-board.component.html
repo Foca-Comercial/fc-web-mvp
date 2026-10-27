@@ -41,11 +41,31 @@
 					</caption>
 					<thead>
 						<tr>
-							<th scope="col">PO</th>
-							<th scope="col">Hora</th>
-							<th scope="col">Cliente y zona</th>
+							<th scope="col" [attr.aria-sort]="ariaSort('po')">
+								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('po')">
+									PO
+									<app-icon [name]="sortIcon('po')" size="size-3.5" />
+								</button>
+							</th>
+							<th scope="col" [attr.aria-sort]="ariaSort('time')">
+								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('time')">
+									HORA
+									<app-icon [name]="sortIcon('time')" size="size-3.5" />
+								</button>
+							</th>
+							<th scope="col" [attr.aria-sort]="ariaSort('client')">
+								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('client')">
+									CLIENTE Y ZONA
+									<app-icon [name]="sortIcon('client')" size="size-3.5" />
+								</button>
+							</th>
 							<th scope="col">Producto</th>
-							<th scope="col">Domiciliario</th>
+							<th scope="col" [attr.aria-sort]="ariaSort('driver')">
+								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('driver')">
+									DOMICILIARIO
+									<app-icon [name]="sortIcon('driver')" size="size-3.5" />
+								</button>
+							</th>
 							<th scope="col">Estado</th>
 							<th scope="col">Acciones</th>
 						</tr>

@@ -114,3 +114,44 @@ export function paginate<T>(rows: readonly T[], page: number, pageSize = BOARD_P
 	const safePage = Math.min(Math.max(page, 1), totalPages(rows.length, pageSize));
 	return rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 }
+
+// ----- Orden de las columnas -----
+// Columnas que se pueden ordenar: PO, Hora, Cliente (por nombre) y Domiciliario (por código)
+export type SortKey = 'po' | 'time' | 'client' | 'driver';
+export type SortDirection = 'asc' | 'desc';
+export interface BoardSort {
+	key: SortKey;
+	direction: SortDirection;
+}
+
+// Cada clic en el encabezado recorre: ascendente → descendente → orden original de la API
+export function nextSort(current: BoardSort | null, key: SortKey): BoardSort | null {
+	if (!current || current.key !== key) return { key, direction: 'asc' };
+	return current.direction === 'asc' ? { key, direction: 'desc' } : null;
+}
+
+const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
+
+function compareBy(a: OrderSummary, b: OrderSummary, key: SortKey): number {
+	switch (key) {
+		case 'po':
+			return collator.compare(a.purchase_order, b.purchase_order);
+		case 'time':
+			return a.creation_time.localeCompare(b.creation_time); // "HH:MM"
+		case 'client':
+			return collator.compare(a.client_name, b.client_name);
+		case 'driver':
+			return collator.compare(a.driver_code ?? '', b.driver_code ?? '');
+	}
+}
+
+// Sin `sort` devuelve las filas tal cual llegaron. Los pedidos sin domiciliario van siempre al
+// final (en ambos sentidos) y los empates se desempatan por id para que el orden sea estable.
+export function sortOrders(rows: readonly OrderSummary[], sort: BoardSort | null): OrderSummary[] {
+	if (!sort) return [...rows];
+	const sign = sort.direction === 'asc' ? 1 : -1;
+	return [...rows].sort((a, b) => {
+		if (sort.key === 'driver' && !a.driver_code !== !b.driver_code) return a.driver_code ? -1 : 1;
+		return compareBy(a, b, sort.key) * sign || a.id_order - b.id_order;
+	});
+}
