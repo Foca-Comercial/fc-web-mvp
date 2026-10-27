@@ -72,7 +72,7 @@ src/app/
 ├── Views/                      # Páginas (las que aparecen en el ruteo)
 │   ├── Auth/login/
 │   └── System/                 # system-shell (layout) + system.routes.ts
-│       ├── Orders/orders-board/    # Tablero de despachos (construido; faltan sus acciones)
+│       ├── Orders/orders-board/    # Tablero de despachos (construido; faltan editar pedido y nuevo pedido)
 │       ├── Routes/routes-board/    # Rutas del día y de la semana (construido)
 │       └── History/ Closure/ Admin/   # vistas por construir
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
@@ -162,7 +162,7 @@ filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.
 
 | Vista | Ruta | Datos | Notas |
 |---|---|---|---|
-| Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente; se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). |
+| Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente; se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). Acciones por fila según el estado (`order-actions.utils`): despachar (`POST /orders/{id}/dispatch`, con o sin domiciliario) y luego ofrece imprimir el CD; entregar (`POST /orders/{id}/deliver`). El detalle cambia el domiciliario (`PATCH /orders/{id}`) y reimprime el CD (`GET /orders/{id}/receipt`, se abre en otra pestaña con `OrderReceiptService`). |
 | Rutas | `/rutas` | `GET /orders/routes-of-day` y `GET /routes/cards` (ya con nombres y zonas de clientes) | "Vista principal" crea los pedidos del día de la ruta (`POST /orders/routes/{id}`); el precio lo pone la API (el pactado del cliente). El detalle pide `GET /routes/{id}/clients` al abrirse. |
 
 ### Componentes compartidos con reglas propias
@@ -170,7 +170,8 @@ filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.
   peticiones, envolverlo en `@if` o resolver la carga dentro del componente del modal
   (ver `order-detail-modal`). Si encima se muestra una alerta de SweetAlert, hay que
   ocultar el modal mientras tanto (ver `route-orders-modal`): un `<dialog>` modal vuelve
-  inerte todo lo demás.
+  inerte todo lo demás. Cuando el modal mismo ejecuta acciones (`order-detail-modal`), los
+  avisos van en línea y no con SweetAlert.
 - **`<app-tabs>`**: variante `default` (pestañas blancas del tablero) y `slate` (Rutas).
 - **`<app-item-picker>`**: buscador desplegable para agregar elementos a una lista.
 - **`<app-data-table>` + `tbody[app-table-skeleton]`**: tabla con el estilo de la marca y su

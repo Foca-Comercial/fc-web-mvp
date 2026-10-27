@@ -35,16 +35,55 @@
 				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Despachado</dt>
 				<dd class="mt-0.5 text-slate-800">{{ (order.dispatch_time | apiTime) || 'Aún no' }}</dd>
 			</div>
+			@if (order.delivery_time) {
+				<div>
+					<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Entregado</dt>
+					<dd class="mt-0.5 text-slate-800">{{ order.delivery_time | apiTime }}</dd>
+				</div>
+			}
 			<div class="sm:col-span-2">
-				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Domiciliario</dt>
-				<dd class="mt-0.5 text-slate-800">
-					@if (order.driver_name) {
-						{{ order.driver_name }}
-						<span class="text-slate-500">({{ order.driver_code }})</span>
-					} @else {
-						Sin asignar
+				@if (capabilities()?.canChangeDriver) {
+					<label for="order-detail-driver" class="text-xs font-bold uppercase tracking-wide text-slate-500">Domiciliario</label>
+					<div class="mt-1 flex flex-col gap-2 sm:flex-row">
+						<select
+							id="order-detail-driver"
+							class="form-input sm:flex-1"
+							[disabled]="!drivers() || saving()"
+							[attr.aria-describedby]="drivers() === null ? 'order-detail-driver-error' : null"
+							(change)="setDriver($any($event.target).value)"
+						>
+							<option value="" [selected]="selectedDriver() === null">Sin asignar</option>
+							@if (currentDriverMissing()) {
+								<option [value]="order.id_user_vehicle" [selected]="selectedDriver() === order.id_user_vehicle">
+									{{ order.driver_code }} · {{ order.driver_name }}
+								</option>
+							}
+							@for (driver of drivers(); track driver.id_user_vehicle) {
+								<option [value]="driver.id_user_vehicle" [selected]="selectedDriver() === driver.id_user_vehicle">
+									{{ driver.code }} · {{ driver.driver_name }} — {{ driver.vehicle_name }}
+								</option>
+							}
+						</select>
+						<button type="button" class="btn-primary" [disabled]="!dirty() || saving()" (click)="saveDriver()">
+							{{ saving() ? 'Guardando…' : 'Guardar' }}
+						</button>
+					</div>
+					@if (drivers() === null) {
+						<p id="order-detail-driver-error" class="mt-1.5 text-xs font-semibold text-warning-700">
+							No se pudo cargar la lista de domiciliarios. Cierra y vuelve a abrir el detalle para intentarlo de nuevo.
+						</p>
 					}
-				</dd>
+				} @else {
+					<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Domiciliario</dt>
+					<dd class="mt-0.5 text-slate-800">
+						@if (order.driver_name) {
+							{{ order.driver_name }}
+							<span class="text-slate-500">({{ order.driver_code }})</span>
+						} @else {
+							Sin asignar
+						}
+					</dd>
+				}
 			</div>
 		</dl>
 
@@ -80,6 +119,15 @@
 				</tfoot>
 			</table>
 		</div>
+
+		<p
+			class="mt-4 min-h-5 text-sm font-semibold"
+			[class]="feedback()?.tone === 'error' ? 'text-danger-700' : 'text-success-700'"
+			role="status"
+			aria-live="polite"
+		>
+			{{ feedback()?.text }}
+		</p>
 	} @else if (state.status === 'error') {
 		<div class="flex flex-col items-center gap-3 py-8 text-center" role="alert">
 			<p class="max-w-sm text-sm text-slate-600">{{ state.message }}</p>
@@ -98,7 +146,15 @@
 		</div>
 	}
 
-	<div modal-footer class="flex justify-end">
+	<div modal-footer class="flex flex-wrap items-center justify-between gap-3">
+		<div>
+			@if (capabilities()?.canPrintReceipt) {
+				<button type="button" class="btn-secondary" [disabled]="printing()" (click)="printReceipt()">
+					<app-icon name="document-text" size="size-4" />
+					{{ printing() ? 'Abriendo…' : 'Reimprimir CD' }}
+				</button>
+			}
+		</div>
 		<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
 	</div>
 </app-modal>

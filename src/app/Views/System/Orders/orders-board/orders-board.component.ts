@@ -5,8 +5,13 @@
 // completo sin paginar, así que la búsqueda, los filtros y la paginación se hacen aquí
 // (ver order-board.utils). Se refresca solo cada minuto, sin molestar con alertas.
 //
-// Paso 5a: lista, filtros y detalle de solo lectura. Las acciones por fila (asignar
-// domiciliario, despachar, entregar) se suman en el paso 5b.
+// Acciones por fila (ver reglas en order-actions.utils):
+//   - Pendiente: ver detalle, o despachar → pasa a la pestaña de despachados y ofrece
+//     imprimir el comprobante de despacho (CD).
+//   - Despachado: ver detalle, o marcar como entregado.
+//   - Entregado / cancelado: solo ver detalle.
+// Asignar o cambiar el domiciliario y reimprimir el CD se hacen dentro del detalle.
+// Pendiente (paso 5c y 6): editar los productos del pedido y registrar pedidos nuevos.
 
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { forkJoin, firstValueFrom } from 'rxjs';
@@ -29,7 +34,9 @@ import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
 import { AlertService } from '@core/Service/Alerts/alert.service';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { ClockService } from '@core/Service/Clock/clock.service';
+import { OrderReceiptService } from '@core/Service/CoreModule/order-receipt.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
+import { orderCapabilities } from '@core/Utils/order-actions.utils';
 import {
 	BOARD_PAGE_SIZE,
 	BoardFilters,
@@ -44,7 +51,8 @@ import {
 } from '@core/Utils/order-board.utils';
 
 type BoardTab = 'pending' | 'dispatched';
-type LoadMode = 'initial' | 'manual' | 'silent';
+// 'change' = recarga tras una acción del usuario: sin alertas como 'silent', pero nunca se descarta
+type LoadMode = 'initial' | 'manual' | 'silent' | 'change';
 
 // Cada cuánto se vuelve a pedir el tablero sin que el usuario haga nada
 const AUTO_REFRESH_MS = 60_000;
@@ -74,6 +82,7 @@ export class OrdersBoardComponent {
 	private readonly orders = inject(OrderService);
 	private readonly apiAlert = inject(ApiAlertService);
 	private readonly alert = inject(AlertService);
+	private readonly receipt = inject(OrderReceiptService);
 	protected readonly clock = inject(ClockService);
 
 	// ----- Datos -----
@@ -85,6 +94,7 @@ export class OrdersBoardComponent {
 	protected readonly stale = signal(false); // la última actualización falló: se ven datos viejos
 	protected readonly lastUpdated = signal<Date | null>(null);
 	private inFlight = false;
+	private reloadQueued = false; // se pidió recargar mientras otra carga estaba en curso
 
 	// ----- Pestañas y filtros -----
 	protected readonly tab = signal<BoardTab>('pending');
@@ -129,6 +139,7 @@ export class OrdersBoardComponent {
 	protected readonly visibleRows = computed(() => paginate(this.filtered(), this.page()));
 	protected readonly columnCount = 7;
 	protected readonly OrderState = OrderState;
+	protected readonly orderCapabilities = orderCapabilities;
 	protected readonly summary = computed(() => {
 		const total = this.filtered().length;
 		if (total === 0) return '';
@@ -172,7 +183,11 @@ export class OrdersBoardComponent {
 	}
 
 	private async load(mode: LoadMode): Promise<void> {
-		if (this.inFlight) return;
+		if (this.inFlight) {
+			// Un cambio recién hecho (despachar, entregar…) no puede perderse: se recarga al terminar
+			if (mode !== 'silent') this.reloadQueued = true;
+			return;
+		}
 		this.inFlight = true;
 		if (mode === 'manual') this.refreshing.set(true);
 
@@ -188,12 +203,16 @@ export class OrdersBoardComponent {
 		} catch (error) {
 			if (mode === 'initial') this.loadFailed.set(true);
 			else this.stale.set(true);
-			if (mode === 'silent') return;
+			if (mode === 'silent' || mode === 'change') return;
 			await this.apiAlert.handleError(error, 'No se pudo cargar el tablero');
 		} finally {
 			this.inFlight = false;
 			this.loading.set(false);
 			this.refreshing.set(false);
+			if (this.reloadQueued) {
+				this.reloadQueued = false;
+				void this.load('change');
+			}
 		}
 	}
 
@@ -218,6 +237,69 @@ export class OrdersBoardComponent {
 
 	protected openDetail(row: OrderSummary): void {
 		this.selectedId.set(row.id_order);
+	}
+
+	// El detalle guardó un cambio (p. ej. el domiciliario): la fila de la tabla se actualiza
+	protected onDetailChanged(): void {
+		void this.load('change');
+	}
+
+	// ----- Acciones por fila -----
+	// PENDING → DISPATCHED. Se puede despachar sin domiciliario (regla del negocio), pero se
+	// avisa porque el CD saldrá con "Sin asignar".
+	protected async dispatch(row: OrderSummary): Promise<void> {
+		const noDriver = !row.driver_code;
+		const result = await this.apiAlert.confirmAndRun(
+			{
+				title: `¿Despachar el pedido ${row.purchase_order}?`,
+				text: noDriver
+					? `${row.client_name}. Aún no tiene domiciliario: el comprobante saldrá como «Sin asignar».`
+					: `${row.client_name}. Domiciliario: ${row.driver_name}.`,
+				icon: noDriver ? 'warning' : 'question',
+				confirmText: 'Sí, despachar',
+			},
+			() => this.orders.dispatch(row.id_order),
+			{ loadingTitle: 'Despachando pedido...', errorTitle: 'No se pudo despachar el pedido' }
+		);
+		if ('cancelled' in result) return;
+
+		// Con error el pedido pudo cambiar de estado por otro lado: se refresca igual
+		await this.load('change');
+		if (!result.ok) return;
+
+		const print = await this.alert.confirm({
+			title: `Pedido ${row.purchase_order} despachado`,
+			text: '¿Quieres imprimir el comprobante de despacho (CD)? Después podrás reimprimirlo desde el detalle.',
+			icon: 'success',
+			confirmText: 'Imprimir CD',
+			cancelText: 'Ahora no',
+		});
+		if (print) await this.printReceipt(row);
+	}
+
+	// DISPATCHED → DELIVERED
+	protected async deliver(row: OrderSummary): Promise<void> {
+		const result = await this.apiAlert.confirmAndRun(
+			{
+				title: `¿Marcar el pedido ${row.purchase_order} como entregado?`,
+				text: row.client_name,
+				icon: 'question',
+				confirmText: 'Sí, entregado',
+			},
+			() => this.orders.deliver(row.id_order),
+			{
+				loadingTitle: 'Registrando entrega...',
+				successToast: `Pedido ${row.purchase_order} entregado`,
+				errorTitle: 'No se pudo marcar como entregado',
+			}
+		);
+		if ('cancelled' in result) return;
+		await this.load('change');
+	}
+
+	private async printReceipt(row: OrderSummary): Promise<void> {
+		const result = await this.receipt.print(row.id_order);
+		if (!result.ok) await this.alert.error('No se pudo abrir el comprobante', result.message);
 	}
 
 	protected newOrder(): void {

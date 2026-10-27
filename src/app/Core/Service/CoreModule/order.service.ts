@@ -7,6 +7,7 @@ import {
 	Order,
 	OrderFullDetail,
 	OrderSummary,
+	OrderUpdate,
 	RouteOfDay,
 	RouteOrdersCreate,
 	RouteOrdersCreated,
@@ -16,8 +17,8 @@ import { IsoDate } from '@core/Models/Shared/api-types.model';
 import { ReadOnlyService } from '../generic.service';
 
 // Pedidos (/orders). No usa el CRUD genérico: no existe POST /orders/ ni DELETE.
-// Los demás flujos (new-client, existing-client, dispatch, deliver, items-order,
-// history, rutas…) se agregan al construir cada vista.
+// Los demás flujos (new-client, existing-client, items-order, history…) se agregan
+// al construir cada vista.
 @Injectable({ providedIn: 'root' })
 export class OrderService extends ReadOnlyService<Order> {
 	constructor() {
@@ -40,6 +41,28 @@ export class OrderService extends ReadOnlyService<Order> {
 	// Modal de detalle: cliente, domiciliario y productos del pedido
 	getFullDetail(id: number): Observable<OrderFullDetail> {
 		return this.http.get<OrderFullDetail>(`${this.baseUrl}/${id}/details`);
+	}
+
+	// ----- Acciones sobre un pedido -----
+
+	// PENDING → DISPATCHED. No exige domiciliario: se puede despachar sin asignar
+	dispatch(id: number): Observable<Order> {
+		return this.http.post<Order>(`${this.baseUrl}/${id}/dispatch`, null);
+	}
+
+	// DISPATCHED → DELIVERED
+	deliver(id: number): Observable<Order> {
+		return this.http.post<Order>(`${this.baseUrl}/${id}/deliver`, null);
+	}
+
+	// Asigna o cambia el domiciliario (mientras el pedido no sea final) o la hora estimada (solo PENDING)
+	updateOrder(id: number, body: OrderUpdate): Observable<Order> {
+		return this.http.patch<Order>(`${this.baseUrl}/${id}`, body);
+	}
+
+	// Comprobante de despacho (CD) en PDF. Solo existe para pedidos despachados o entregados
+	getReceipt(id: number): Observable<Blob> {
+		return this.http.get(`${this.baseUrl}/${id}/receipt`, { responseType: 'blob' });
 	}
 
 	// ----- Pedidos por ruta -----

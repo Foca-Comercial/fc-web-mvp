@@ -89,6 +89,7 @@
 										}
 									</td>
 									<td>
+										@let actions = orderCapabilities(row.state);
 										<div class="flex items-center justify-center gap-2">
 											<button
 												app-icon-button
@@ -96,6 +97,24 @@
 												[label]="'Ver detalle del pedido ' + row.purchase_order"
 												(click)="openDetail(row)"
 											></button>
+											@if (actions.canDispatch) {
+												<button
+													app-icon-button
+													icon="document-text"
+													tone="primary"
+													[label]="'Despachar el pedido ' + row.purchase_order"
+													(click)="dispatch(row)"
+												></button>
+											}
+											@if (actions.canDeliver) {
+												<button
+													app-icon-button
+													icon="check-circle"
+													tone="success"
+													[label]="'Marcar el pedido ' + row.purchase_order + ' como entregado'"
+													(click)="deliver(row)"
+												></button>
+											}
 										</div>
 									</td>
 								</tr>
@@ -159,4 +178,8 @@
 	</div>
 </section>
 
-<app-order-detail-modal [orderId]="selectedId()" (closed)="selectedId.set(null)" />
+<app-order-detail-modal
+	[orderId]="selectedId()"
+	(closed)="selectedId.set(null)"
+	(changed)="onDetailChanged()"
+/>

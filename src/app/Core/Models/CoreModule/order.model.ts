@@ -59,9 +59,12 @@ export interface OrderCreateExistingClient extends OrderCreateBase {
 	id_client: number;
 }
 
-// PATCH /orders/{id}: único campo editable (null para desasignar)
+// PATCH /orders/{id}: parcial, solo se modifica lo que se envía.
+// - id_user_vehicle: asigna o cambia el domiciliario (null desasigna); hasta que el pedido sea final.
+// - estimated_delivery: hora estimada (null la quita); solo mientras el pedido está PENDING.
 export interface OrderUpdate {
-	id_user_vehicle: number | null;
+	id_user_vehicle?: number | null;
+	estimated_delivery?: TimeString | null;
 }
 
 // PUT /orders/{id}/items-order: lista FINAL deseada
@@ -108,6 +111,7 @@ export interface OrderFullDetail {
 	creation_datetime: IsoDateTime;
 	estimated_delivery: TimeString | null;
 	dispatch_time: TimeString | null;
+	delivery_time: TimeString | null;
 	state: OrderState;
 	order_total: Money;
 	client_name: string;
@@ -115,6 +119,7 @@ export interface OrderFullDetail {
 	client_address: string | null;
 	neighborhood_name: string;
 	zone_name: string;
+	id_user_vehicle: number | null; // preselecciona el domiciliario al cambiarlo
 	driver_code: string | null;
 	driver_name: string | null;
 	items: OrderDetailItem[];
