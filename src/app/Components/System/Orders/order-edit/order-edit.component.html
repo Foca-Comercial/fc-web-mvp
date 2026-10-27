@@ -1,0 +1,41 @@
+<div class="space-y-5">
+	<div class="max-w-xs">
+		<label for="order-edit-time" class="form-label">Hora estimada de entrega</label>
+		<input
+			id="order-edit-time"
+			type="time"
+			class="form-input"
+			[value]="deliveryTime()"
+			[disabled]="saving()"
+			(input)="deliveryTime.set($any($event.target).value)"
+		/>
+		<p class="mt-1.5 text-xs text-slate-500">Déjala vacía si el pedido no tiene hora definida.</p>
+	</div>
+
+	<div>
+		<h3 class="mb-2 text-sm font-bold uppercase tracking-wide text-brand-900">Productos</h3>
+		@if (catalog() === undefined) {
+			<div class="space-y-3" aria-busy="true" aria-label="Cargando el catálogo">
+				<app-skeleton class="h-14 w-full rounded-xl" />
+				<app-skeleton class="h-14 w-full rounded-xl" />
+			</div>
+		} @else {
+			<app-order-items-editor
+				[(lines)]="lines"
+				[original]="savedLines()"
+				[catalog]="catalog() ?? null"
+				[disabled]="saving()"
+			/>
+		}
+	</div>
+
+	<div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+		<p class="min-h-5 text-sm font-semibold text-danger-700" role="alert">{{ error() ?? problem() }}</p>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+			<button type="button" class="btn-primary" [disabled]="!canSave()" (click)="save()">
+				{{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+			</button>
+		</div>
+	</div>
+</div>

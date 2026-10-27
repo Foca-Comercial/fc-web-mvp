@@ -72,7 +72,7 @@ src/app/
 ├── Views/                      # Páginas (las que aparecen en el ruteo)
 │   ├── Auth/login/
 │   └── System/                 # system-shell (layout) + system.routes.ts
-│       ├── Orders/orders-board/    # Tablero de despachos (construido; faltan editar pedido y nuevo pedido)
+│       ├── Orders/orders-board/    # Tablero de despachos (construido; falta nuevo pedido)
 │       ├── Routes/routes-board/    # Rutas del día y de la semana (construido)
 │       └── History/ Closure/ Admin/   # vistas por construir
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
@@ -162,7 +162,7 @@ filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.
 
 | Vista | Ruta | Datos | Notas |
 |---|---|---|---|
-| Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente; se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). Acciones por fila según el estado (`order-actions.utils`): despachar (`POST /orders/{id}/dispatch`, con o sin domiciliario) y luego ofrece imprimir el CD; entregar (`POST /orders/{id}/deliver`). El detalle cambia el domiciliario (`PATCH /orders/{id}`) y reimprime el CD (`GET /orders/{id}/receipt`, se abre en otra pestaña con `OrderReceiptService`). |
+| Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente; se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). Acciones por fila según el estado (`order-actions.utils`): despachar (`POST /orders/{id}/dispatch`, con o sin domiciliario) y luego ofrece imprimir el CD; entregar (`POST /orders/{id}/deliver`). El detalle cambia el domiciliario (`PATCH /orders/{id}`) y reimprime el CD (`GET /orders/{id}/receipt`, se abre en otra pestaña con `OrderReceiptService`). "Editar pedido" (solo PENDING, dentro del detalle): hora estimada (`PATCH`) y productos (`PUT /orders/{id}/items-order`) con `<app-order-items-editor>`; el catálogo sale de `GET /products/catalog?id_client=` y cada producto entra con el precio pactado del cliente, editable. |
 | Rutas | `/rutas` | `GET /orders/routes-of-day` y `GET /routes/cards` (ya con nombres y zonas de clientes) | "Vista principal" crea los pedidos del día de la ruta (`POST /orders/routes/{id}`); el precio lo pone la API (el pactado del cliente). El detalle pide `GET /routes/{id}/clients` al abrirse. |
 
 ### Componentes compartidos con reglas propias
@@ -172,6 +172,9 @@ filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.
   ocultar el modal mientras tanto (ver `route-orders-modal`): un `<dialog>` modal vuelve
   inerte todo lo demás. Cuando el modal mismo ejecuta acciones (`order-detail-modal`), los
   avisos van en línea y no con SweetAlert.
+- **`<app-order-items-editor>`**: lista editable de productos de un pedido (cantidad, precio, quitar,
+  agregar del catálogo). Su lógica está en `Core/Utils/order-items.utils.ts` y se reutilizará al
+  registrar pedidos nuevos.
 - **`<app-tabs>`**: variante `default` (pestañas blancas del tablero) y `slate` (Rutas).
 - **`<app-item-picker>`**: buscador desplegable para agregar elementos a una lista.
 - **`<app-data-table>` + `tbody[app-table-skeleton]`**: tabla con el estilo de la marca y su

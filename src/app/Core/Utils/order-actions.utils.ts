@@ -10,6 +10,7 @@ import { OrderState } from '@core/Models/Shared/api-types.model';
 export interface OrderCapabilities {
 	canDispatch: boolean; // marcar como despachado (y generar el CD)
 	canDeliver: boolean; // marcar como entregado
+	canEdit: boolean; // cambiar productos y hora estimada (solo antes de despachar)
 	canChangeDriver: boolean; // asignar, cambiar o quitar domiciliario
 	canPrintReceipt: boolean; // el CD solo existe desde que se despacha
 }
@@ -18,6 +19,7 @@ export function orderCapabilities(state: OrderState): OrderCapabilities {
 	return {
 		canDispatch: state === OrderState.PENDING,
 		canDeliver: state === OrderState.DISPATCHED,
+		canEdit: state === OrderState.PENDING,
 		canChangeDriver: state === OrderState.PENDING || state === OrderState.DISPATCHED,
 		canPrintReceipt: state === OrderState.DISPATCHED || state === OrderState.DELIVERED,
 	};

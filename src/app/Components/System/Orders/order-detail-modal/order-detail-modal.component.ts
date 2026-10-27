@@ -3,6 +3,7 @@
 // ==================================================
 // Detalle completo de un pedido (GET /orders/{id}/details) con las acciones que su
 // estado permite:
+//   - PENDING: editar la hora estimada y los productos (modo "Editar pedido", ver order-edit).
 //   - PENDING / DISPATCHED: asignar, cambiar o quitar el domiciliario (PATCH /orders/{id}).
 //   - DISPATCHED / DELIVERED: reimprimir el comprobante de despacho (CD).
 //   - DELIVERED / CANCELLED: solo lectura (la API rechaza cambios en estados finales).
@@ -32,6 +33,7 @@ import {
 import { IconComponent } from '@components/Shared/icon/icon.component';
 import { ModalComponent } from '@components/Shared/modal/modal.component';
 import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.component';
+import { OrderEditComponent } from '@components/System/Orders/order-edit/order-edit.component';
 import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
 import { DriverVehicleDropdown } from '@core/Models/CoreModule/catalog.model';
 import { OrderFullDetail } from '@core/Models/CoreModule/order.model';
@@ -65,6 +67,7 @@ const LOADING: DetailState = { status: 'loading' };
 	selector: 'app-order-detail-modal',
 	imports: [
 		IconComponent,
+		OrderEditComponent,
 		ModalComponent,
 		SkeletonComponent,
 		OrderStatusBadgeComponent,
@@ -152,6 +155,9 @@ export class OrderDetailModalComponent {
 		);
 	});
 
+	// Ver o editar los productos y la hora; siempre abre en "ver"
+	protected readonly editing = linkedSignal<number | null, boolean>({ source: this.orderId, computation: () => false });
+
 	protected readonly saving = signal(false);
 	protected readonly printing = signal(false);
 	// El aviso se borra al cambiar de pedido
@@ -197,6 +203,24 @@ export class OrderDetailModalComponent {
 		} finally {
 			this.saving.set(false);
 		}
+	}
+
+	protected startEditing(): void {
+		this.feedback.set(null);
+		this.editing.set(true);
+	}
+
+	// Guardó todo: vuelve a "ver" con el pedido ya actualizado
+	protected onEditSaved(): void {
+		this.editing.set(false);
+		this.feedback.set({ tone: 'success', text: 'Pedido actualizado.' });
+		this.onEditChanged();
+	}
+
+	// El pedido cambió (del todo o en parte): se vuelve a pedir y se avisa a la tabla
+	protected onEditChanged(): void {
+		this.reload$.next('refresh');
+		this.changed.emit();
 	}
 
 	protected async printReceipt(): Promise<void> {

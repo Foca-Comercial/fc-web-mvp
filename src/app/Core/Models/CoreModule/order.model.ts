@@ -114,6 +114,7 @@ export interface OrderFullDetail {
 	delivery_time: TimeString | null;
 	state: OrderState;
 	order_total: Money;
+	id_client: number; // para pedir el catálogo con los precios de este cliente
 	client_name: string;
 	client_phone: string | null;
 	client_address: string | null;

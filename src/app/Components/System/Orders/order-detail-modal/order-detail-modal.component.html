@@ -48,7 +48,7 @@
 						<select
 							id="order-detail-driver"
 							class="form-input sm:flex-1"
-							[disabled]="!drivers() || saving()"
+							[disabled]="!drivers() || saving() || editing()"
 							[attr.aria-describedby]="drivers() === null ? 'order-detail-driver-error' : null"
 							(change)="setDriver($any($event.target).value)"
 						>
@@ -64,7 +64,7 @@
 								</option>
 							}
 						</select>
-						<button type="button" class="btn-primary" [disabled]="!dirty() || saving()" (click)="saveDriver()">
+						<button type="button" class="btn-primary" [disabled]="!dirty() || saving() || editing()" (click)="saveDriver()">
 							{{ saving() ? 'Guardando…' : 'Guardar' }}
 						</button>
 					</div>
@@ -87,38 +87,49 @@
 			</div>
 		</dl>
 
-		<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Productos</h3>
-		<div class="overflow-x-auto rounded-xl border border-slate-200">
-			<table class="w-full min-w-120 border-collapse text-sm">
-				<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
-					<tr>
-						<th class="px-4 py-2.5 text-left font-bold">Producto</th>
-						<th class="px-4 py-2.5 text-right font-bold">Cant.</th>
-						<th class="px-4 py-2.5 text-right font-bold">Precio</th>
-						<th class="px-4 py-2.5 text-right font-bold">Subtotal</th>
-					</tr>
-				</thead>
-				<tbody>
-					@for (item of order.items; track item.id_order_detail) {
-						<tr class="border-t border-slate-200">
-							<td class="px-4 py-2.5">
-								<span class="font-semibold text-slate-900">{{ item.product_code }}</span>
-								<span class="text-slate-500"> · {{ item.product_name }}</span>
-							</td>
-							<td class="px-4 py-2.5 text-right tabular-nums">{{ item.cant }}</td>
-							<td class="px-4 py-2.5 text-right tabular-nums">{{ item.unit_price | cop }}</td>
-							<td class="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-900">{{ item.subtotal | cop }}</td>
+		@if (editing()) {
+			<div class="mt-6 border-t border-slate-200 pt-5">
+				<app-order-edit
+					[order]="order"
+					(saved)="onEditSaved()"
+					(changed)="onEditChanged()"
+					(cancelled)="editing.set(false)"
+				/>
+			</div>
+		} @else {
+			<h3 class="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-brand-900">Productos</h3>
+			<div class="overflow-x-auto rounded-xl border border-slate-200">
+				<table class="w-full min-w-120 border-collapse text-sm">
+					<thead class="bg-brand-100 text-xs uppercase tracking-wide text-brand-900">
+						<tr>
+							<th class="px-4 py-2.5 text-left font-bold">Producto</th>
+							<th class="px-4 py-2.5 text-right font-bold">Cant.</th>
+							<th class="px-4 py-2.5 text-right font-bold">Precio</th>
+							<th class="px-4 py-2.5 text-right font-bold">Subtotal</th>
 						</tr>
-					}
-				</tbody>
-				<tfoot>
-					<tr class="border-t-2 border-slate-300 bg-slate-50">
-						<td colspan="3" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wide text-slate-600">Total</td>
-						<td class="px-4 py-3 text-right text-base font-bold tabular-nums text-brand-950">{{ order.order_total | cop }}</td>
-					</tr>
-				</tfoot>
-			</table>
-		</div>
+					</thead>
+					<tbody>
+						@for (item of order.items; track item.id_order_detail) {
+							<tr class="border-t border-slate-200">
+								<td class="px-4 py-2.5">
+									<span class="font-semibold text-slate-900">{{ item.product_code }}</span>
+									<span class="text-slate-500"> · {{ item.product_name }}</span>
+								</td>
+								<td class="px-4 py-2.5 text-right tabular-nums">{{ item.cant }}</td>
+								<td class="px-4 py-2.5 text-right tabular-nums">{{ item.unit_price | cop }}</td>
+								<td class="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-900">{{ item.subtotal | cop }}</td>
+							</tr>
+						}
+					</tbody>
+					<tfoot>
+						<tr class="border-t-2 border-slate-300 bg-slate-50">
+							<td colspan="3" class="px-4 py-3 text-right text-sm font-bold uppercase tracking-wide text-slate-600">Total</td>
+							<td class="px-4 py-3 text-right text-base font-bold tabular-nums text-brand-950">{{ order.order_total | cop }}</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		}
 
 		<p
 			class="mt-4 min-h-5 text-sm font-semibold"
@@ -146,15 +157,23 @@
 		</div>
 	}
 
-	<div modal-footer class="flex flex-wrap items-center justify-between gap-3">
-		<div>
-			@if (capabilities()?.canPrintReceipt) {
-				<button type="button" class="btn-secondary" [disabled]="printing()" (click)="printReceipt()">
-					<app-icon name="document-text" size="size-4" />
-					{{ printing() ? 'Abriendo…' : 'Reimprimir CD' }}
-				</button>
-			}
+	@if (!editing()) {
+		<div modal-footer class="flex flex-wrap items-center justify-between gap-3">
+			<div class="flex flex-wrap gap-3">
+				@if (capabilities()?.canEdit) {
+					<button type="button" class="btn-primary" (click)="startEditing()">
+						<app-icon name="pencil-square" size="size-4" />
+						Editar pedido
+					</button>
+				}
+				@if (capabilities()?.canPrintReceipt) {
+					<button type="button" class="btn-secondary" [disabled]="printing()" (click)="printReceipt()">
+						<app-icon name="document-text" size="size-4" />
+						{{ printing() ? 'Abriendo…' : 'Reimprimir CD' }}
+					</button>
+				}
+			</div>
+			<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
 		</div>
-		<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
-	</div>
+	}
 </app-modal>

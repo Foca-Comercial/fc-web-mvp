@@ -6,6 +6,7 @@ import { API_ENDPOINTS } from '@core/Constants/api-endpoints';
 import {
 	Order,
 	OrderFullDetail,
+	OrderItemsSyncRequest,
 	OrderSummary,
 	OrderUpdate,
 	RouteOfDay,
@@ -58,6 +59,12 @@ export class OrderService extends ReadOnlyService<Order> {
 	// Asigna o cambia el domiciliario (mientras el pedido no sea final) o la hora estimada (solo PENDING)
 	updateOrder(id: number, body: OrderUpdate): Observable<Order> {
 		return this.http.patch<Order>(`${this.baseUrl}/${id}`, body);
+	}
+
+	// Reemplaza la lista de productos del pedido por la enviada (solo PENDING). Los renglones sin
+	// `id_order_detail` se crean y los que no vengan se eliminan; la API recalcula el total.
+	syncItems(id: number, body: OrderItemsSyncRequest): Observable<Order> {
+		return this.http.put<Order>(`${this.baseUrl}/${id}/items-order`, body);
 	}
 
 	// Comprobante de despacho (CD) en PDF. Solo existe para pedidos despachados o entregados
