@@ -178,6 +178,8 @@
 	</div>
 </section>
 
+<app-new-order-modal [(open)]="newOrderOpen" (created)="onOrderCreated($event)" />
+
 <app-order-detail-modal
 	[orderId]="selectedId()"
 	(closed)="selectedId.set(null)"

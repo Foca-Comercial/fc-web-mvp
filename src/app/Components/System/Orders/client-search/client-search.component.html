@@ -1,0 +1,66 @@
+@if (selected(); as client) {
+	<div class="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+		<div class="flex min-w-0 items-start gap-3">
+			<span class="grid size-10 shrink-0 place-items-center rounded-full bg-brand-900 text-white">
+				<app-icon name="user-circle" size="size-6" />
+			</span>
+			<div class="min-w-0">
+				<p class="font-semibold text-slate-900">{{ client.name }}</p>
+				<p class="text-xs text-slate-600">
+					{{ client.phone || 'Sin teléfono' }} · {{ client.address || 'Sin dirección' }}
+					@if (area(client); as zone) {
+						· {{ zone }}
+					}
+				</p>
+			</div>
+		</div>
+		<button type="button" class="btn-secondary" (click)="change()">Cambiar cliente</button>
+	</div>
+} @else {
+	<app-search-input
+		placeholder="Buscar cliente por nombre"
+		ariaLabel="Buscar un cliente registrado por su nombre"
+		[(value)]="query"
+	/>
+
+	@let current = state();
+	<div class="mt-2" aria-live="polite">
+		@if (current.status === 'idle') {
+			<p class="px-1 text-xs text-slate-500">Escribe al menos 2 letras del nombre del cliente.</p>
+		} @else if (current.status === 'loading') {
+			<div class="space-y-2" aria-busy="true" aria-label="Buscando clientes">
+				<app-skeleton class="h-12 w-full rounded-xl" />
+				<app-skeleton class="h-12 w-full rounded-xl" />
+			</div>
+		} @else if (current.status === 'error') {
+			<div class="flex flex-wrap items-center gap-3 rounded-xl bg-warning-50 px-4 py-3 text-sm text-warning-800" role="alert">
+				No se pudo buscar clientes.
+				<button type="button" class="btn-secondary" (click)="retry()">Reintentar</button>
+			</div>
+		} @else if (current.clients.length === 0) {
+			<p class="rounded-xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
+				Ningún cliente registrado coincide con la búsqueda. Si es un cliente nuevo, usa la opción «Cliente nuevo».
+			</p>
+		} @else {
+			<ul class="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200">
+				@for (client of current.clients; track client.id_client) {
+					<li>
+						<button
+							type="button"
+							class="block w-full px-4 py-2.5 text-left transition hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
+							(click)="pick(client)"
+						>
+							<span class="block text-sm font-semibold text-slate-900">{{ client.name }}</span>
+							<span class="block text-xs text-slate-500">
+								{{ client.address || 'Sin dirección' }}
+								@if (area(client); as zone) {
+									· {{ zone }}
+								}
+							</span>
+						</button>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

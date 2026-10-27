@@ -170,3 +170,12 @@ function defaultMessageForStatus(status: number): string {
 			return status >= 500 ? 'Ocurrió un error en el servidor.' : 'No se pudo completar la operación.';
 	}
 }
+
+// Texto(s) para mostrar un error EN LÍNEA (dentro de un modal, donde no se puede usar SweetAlert):
+// el mensaje, o uno por cada campo con error si fue una validación de Pydantic.
+export function describeApiError(error: ApiError): string[] {
+	if (error.kind === 'validation' && error.fieldErrors.length > 0) {
+		return error.fieldErrors.map((item) => `${item.label}: ${item.message}`);
+	}
+	return [error.message];
+}

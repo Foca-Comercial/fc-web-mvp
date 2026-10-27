@@ -8,7 +8,7 @@
 
 import { PickerOption } from '@components/Shared/item-picker/item-picker.utils';
 import { ProductCatalogItem } from '@core/Models/CoreModule/catalog.model';
-import { OrderDetailItem, OrderItemsSyncRequest } from '@core/Models/CoreModule/order.model';
+import { OrderDetailItem, OrderItemInput, OrderItemsSyncRequest } from '@core/Models/CoreModule/order.model';
 import { formatCop, toNumber } from './money.utils';
 
 export interface EditorLine {
@@ -121,6 +121,15 @@ export function buildItemsSync(lines: readonly EditorLine[]): OrderItemsSyncRequ
 			unit_price: Math.round((parsePrice(line.priceText) ?? 0) * 100) / 100,
 		})),
 	};
+}
+
+// Renglones de un pedido NUEVO (POST /orders/new-client y /existing-client): sin `id_order_detail`
+export function buildNewOrderItems(lines: readonly EditorLine[]): OrderItemInput[] {
+	return lines.map((line) => ({
+		id_product: line.id_product,
+		cant: line.cant,
+		unit_price: Math.round((parsePrice(line.priceText) ?? 0) * 100) / 100,
+	}));
 }
 
 // ----- Buscador de productos -----

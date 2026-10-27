@@ -11,7 +11,8 @@
 //   - Despachado: ver detalle, o marcar como entregado.
 //   - Entregado / cancelado: solo ver detalle.
 // Asignar o cambiar el domiciliario y reimprimir el CD se hacen dentro del detalle.
-// Pendiente (paso 5c y 6): editar los productos del pedido y registrar pedidos nuevos.
+// "Nuevo pedido" abre el formulario de registro (cliente existente o nuevo). Editar los
+// productos y la hora de un pendiente se hace dentro del detalle.
 
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { forkJoin, firstValueFrom } from 'rxjs';
@@ -25,9 +26,10 @@ import { PaginationComponent } from '@components/Shared/pagination/pagination.co
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { TabItem, TabsComponent } from '@components/Shared/tabs/tabs.component';
+import { NewOrderModalComponent } from '@components/System/Orders/new-order-modal/new-order-modal.component';
 import { OrderDetailModalComponent } from '@components/System/Orders/order-detail-modal/order-detail-modal.component';
 import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
-import { OrderSummary } from '@core/Models/CoreModule/order.model';
+import { OrderSummary, OrderWithDetails } from '@core/Models/CoreModule/order.model';
 import { OrderState } from '@core/Models/Shared/api-types.model';
 import { ApiTimePipe } from '@core/Pipes/api-time.pipe';
 import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
@@ -69,6 +71,7 @@ const AUTO_REFRESH_MS = 60_000;
 		SearchInputComponent,
 		TableSkeletonComponent,
 		TabsComponent,
+		NewOrderModalComponent,
 		OrderDetailModalComponent,
 		OrderStatusBadgeComponent,
 		ApiTimePipe,
@@ -103,6 +106,7 @@ export class OrdersBoardComponent {
 	protected readonly status = signal('');
 	protected readonly driver = signal('');
 	protected readonly selectedId = signal<number | null>(null);
+	protected readonly newOrderOpen = signal(false);
 
 	protected readonly tabs = computed<TabItem[]>(() => [
 		{ id: 'pending', label: 'Pedidos pendientes', count: this.pendingRows().length },
@@ -303,6 +307,15 @@ export class OrdersBoardComponent {
 	}
 
 	protected newOrder(): void {
-		this.alert.toast('El registro de pedidos se habilita en el siguiente paso', 'info');
+		this.newOrderOpen.set(true);
+	}
+
+	// El pedido nuevo nace PENDING: se pasa a la pestaña de pendientes (limpiando filtros que
+	// podrían esconderlo) y se recarga el tablero
+	protected onOrderCreated(order: OrderWithDetails): void {
+		this.tab.set('pending');
+		this.clearFilters();
+		this.alert.toast(`Pedido ${order.purchase_order} registrado`);
+		void this.load('change');
 	}
 }

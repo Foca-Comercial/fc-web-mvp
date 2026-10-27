@@ -5,10 +5,13 @@ import { Observable } from 'rxjs';
 import { API_ENDPOINTS } from '@core/Constants/api-endpoints';
 import {
 	Order,
+	OrderCreateExistingClient,
+	OrderCreateNewClient,
 	OrderFullDetail,
 	OrderItemsSyncRequest,
 	OrderSummary,
 	OrderUpdate,
+	OrderWithDetails,
 	RouteOfDay,
 	RouteOrdersCreate,
 	RouteOrdersCreated,
@@ -42,6 +45,17 @@ export class OrderService extends ReadOnlyService<Order> {
 	// Modal de detalle: cliente, domiciliario y productos del pedido
 	getFullDetail(id: number): Observable<OrderFullDetail> {
 		return this.http.get<OrderFullDetail>(`${this.baseUrl}/${id}/details`);
+	}
+
+	// ----- Registro de pedidos -----
+	// El consecutivo (purchase_order) lo asigna la API. Solo acepta clientes REGISTRADOS.
+	createForExistingClient(body: OrderCreateExistingClient): Observable<OrderWithDetails> {
+		return this.http.post<OrderWithDetails>(`${this.baseUrl}/existing-client`, body);
+	}
+
+	// Crea también al cliente, como temporal (is_registered = false)
+	createForNewClient(body: OrderCreateNewClient): Observable<OrderWithDetails> {
+		return this.http.post<OrderWithDetails>(`${this.baseUrl}/new-client`, body);
 	}
 
 	// ----- Acciones sobre un pedido -----
