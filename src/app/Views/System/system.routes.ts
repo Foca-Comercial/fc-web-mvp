@@ -44,8 +44,9 @@ export const SYSTEM_ROUTES: Routes = [
 			},
 			{
 				path: 'cierre',
-				title: 'Cierre · Foca Comercial',
-				component: ComingSoonComponent,
+				title: 'Cierre y reportes · Foca Comercial',
+				loadComponent: () =>
+					import('./Closure/closure-board/closure-board.component').then((m) => m.ClosureBoardComponent),
 				canActivate: [roleGuard],
 				data: { roles: MANAGER, title: 'Cierre del día' },
 			},

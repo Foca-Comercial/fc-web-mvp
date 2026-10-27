@@ -119,13 +119,13 @@ export function paginate<T>(rows: readonly T[], page: number, pageSize = BOARD_P
 // Columnas que se pueden ordenar: PO, Hora, Cliente (por nombre) y Domiciliario (por código)
 export type SortKey = 'po' | 'time' | 'client' | 'driver';
 export type SortDirection = 'asc' | 'desc';
-export interface BoardSort {
-	key: SortKey;
+export interface BoardSort<K extends string = SortKey> {
+	key: K;
 	direction: SortDirection;
 }
 
 // Cada clic en el encabezado recorre: ascendente → descendente → orden original de la API
-export function nextSort(current: BoardSort | null, key: SortKey): BoardSort | null {
+export function nextSort<K extends string = SortKey>(current: BoardSort<K> | null, key: K): BoardSort<K> | null {
 	if (!current || current.key !== key) return { key, direction: 'asc' };
 	return current.direction === 'asc' ? { key, direction: 'desc' } : null;
 }
