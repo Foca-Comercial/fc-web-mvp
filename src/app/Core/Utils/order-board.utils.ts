@@ -9,7 +9,9 @@ import { OrderState } from '@core/Models/Shared/api-types.model';
 import { computeDeliveryStatus } from './delivery-status.utils';
 import { normalizeText } from './text.utils';
 
-export const BOARD_PAGE_SIZE = 8;
+// Filas por página: lo que se ve al entrar y lo que se puede elegir en el selector de las tablas
+export const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50, 100, 200];
+export const BOARD_PAGE_SIZE = PAGE_SIZE_OPTIONS[0];
 
 // Valor de un filtro "Estado" del tablero. Es más fino que `OrderState`: un pedido
 // PENDING se reparte en pending / soon / late según su hora estimada.

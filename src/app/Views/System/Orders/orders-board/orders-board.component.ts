@@ -22,6 +22,7 @@ import { EmptyStateComponent } from '@components/Shared/empty-state/empty-state.
 import { FilterSelectComponent } from '@components/Shared/filter-select/filter-select.component';
 import { IconButtonComponent } from '@components/Shared/icon-button/icon-button.component';
 import { IconComponent } from '@components/Shared/icon/icon.component';
+import { PageSizeSelectComponent } from '@components/Shared/page-size-select/page-size-select.component';
 import { PaginationComponent } from '@components/Shared/pagination/pagination.component';
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
@@ -41,6 +42,7 @@ import { OrderService } from '@core/Service/CoreModule/order.service';
 import { orderCapabilities } from '@core/Utils/order-actions.utils';
 import {
 	BOARD_PAGE_SIZE,
+	PAGE_SIZE_OPTIONS,
 	BoardFilters,
 	BoardSort,
 	SortKey,
@@ -71,6 +73,7 @@ const AUTO_REFRESH_MS = 60_000;
 		FilterSelectComponent,
 		IconButtonComponent,
 		IconComponent,
+		PageSizeSelectComponent,
 		PaginationComponent,
 		SearchInputComponent,
 		TableSkeletonComponent,
@@ -110,6 +113,8 @@ export class OrdersBoardComponent {
 	protected readonly status = signal('');
 	protected readonly driver = signal('');
 	protected readonly sort = signal<BoardSort | null>(null);
+	protected readonly pageSize = signal(BOARD_PAGE_SIZE);
+	protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
 	protected readonly selectedId = signal<number | null>(null);
 	protected readonly newOrderOpen = signal(false);
 
@@ -136,25 +141,25 @@ export class OrdersBoardComponent {
 	// Depende de `clock.now()`: el filtro de Estado (Próximo / Retrasado) se reevalúa con el reloj
 	private readonly filtered = computed(() => filterOrders(this.activeRows(), this.filters(), this.clock.now()));
 	private readonly sorted = computed(() => sortOrders(this.filtered(), this.sort()));
-	protected readonly pages = computed(() => totalPages(this.filtered().length));
+	protected readonly pages = computed(() => totalPages(this.filtered().length, this.pageSize()));
 
 	// Vuelve a la página 1 al cambiar de pestaña o de filtros; si el refresco deja menos
 	// páginas que la actual, se queda en la última
 	protected readonly page = linkedSignal<{ key: string; pages: number }, number>({
-		source: () => ({ key: JSON.stringify([this.tab(), this.filters(), this.sort()]), pages: this.pages() }),
+		source: () => ({ key: JSON.stringify([this.tab(), this.filters(), this.sort(), this.pageSize()]), pages: this.pages() }),
 		computation: (source, previous) =>
 			previous && previous.source.key === source.key ? Math.min(previous.value, source.pages) : 1,
 	});
 
-	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page()));
+	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page(), this.pageSize()));
 	protected readonly columnCount = 7;
 	protected readonly OrderState = OrderState;
 	protected readonly orderCapabilities = orderCapabilities;
 	protected readonly summary = computed(() => {
 		const total = this.filtered().length;
 		if (total === 0) return '';
-		const from = (this.page() - 1) * BOARD_PAGE_SIZE + 1;
-		const to = Math.min(this.page() * BOARD_PAGE_SIZE, total);
+		const from = (this.page() - 1) * this.pageSize() + 1;
+		const to = Math.min(this.page() * this.pageSize(), total);
 		return `Mostrando ${from}–${to} de ${total} ${total === 1 ? 'pedido' : 'pedidos'}`;
 	});
 

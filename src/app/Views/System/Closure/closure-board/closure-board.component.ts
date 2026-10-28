@@ -18,6 +18,7 @@ import { DataTableComponent } from '@components/Shared/data-table/data-table.com
 import { EmptyStateComponent } from '@components/Shared/empty-state/empty-state.component';
 import { IconButtonComponent } from '@components/Shared/icon-button/icon-button.component';
 import { IconComponent } from '@components/Shared/icon/icon.component';
+import { PageSizeSelectComponent } from '@components/Shared/page-size-select/page-size-select.component';
 import { PaginationComponent } from '@components/Shared/pagination/pagination.component';
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
@@ -47,7 +48,7 @@ import { todayBogota } from '@core/Utils/date.utils';
 import { saveBlobResponse } from '@core/Utils/download.utils';
 import { escapeHtml } from '@core/Utils/html.utils';
 import { formatCop } from '@core/Utils/money.utils';
-import { BOARD_PAGE_SIZE, nextSort, paginate, totalPages } from '@core/Utils/order-board.utils';
+import { BOARD_PAGE_SIZE, PAGE_SIZE_OPTIONS, nextSort, paginate, totalPages } from '@core/Utils/order-board.utils';
 
 type LoadMode = 'initial' | 'manual';
 
@@ -60,6 +61,7 @@ type LoadMode = 'initial' | 'manual';
 		EmptyStateComponent,
 		IconButtonComponent,
 		IconComponent,
+		PageSizeSelectComponent,
 		PaginationComponent,
 		SearchInputComponent,
 		SkeletonComponent,
@@ -89,17 +91,19 @@ export class ClosureBoardComponent {
 	// ----- Búsqueda, orden y página -----
 	protected readonly search = signal('');
 	protected readonly sort = signal<ClosureSort | null>(null);
+	protected readonly pageSize = signal(BOARD_PAGE_SIZE);
+	protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
 
 	readonly sellers = computed(() => this.summary()?.sellers ?? []);
 	private readonly sorted = computed(() => sortSellers(filterSellers(this.sellers(), this.search()), this.sort()));
-	protected readonly pages = computed(() => totalPages(this.sorted().length));
+	protected readonly pages = computed(() => totalPages(this.sorted().length, this.pageSize()));
 	protected readonly page = linkedSignal<{ key: string; pages: number }, number>({
-		source: () => ({ key: JSON.stringify([this.date(), this.search(), this.sort()]), pages: this.pages() }),
+		source: () => ({ key: JSON.stringify([this.date(), this.search(), this.sort(), this.pageSize()]), pages: this.pages() }),
 		computation: (source, previous) =>
 			previous && previous.source.key === source.key ? Math.min(previous.value, source.pages) : 1,
 	});
-	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page()));
-	protected readonly firstRowNumber = computed(() => (this.page() - 1) * BOARD_PAGE_SIZE + 1);
+	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page(), this.pageSize()));
+	protected readonly firstRowNumber = computed(() => (this.page() - 1) * this.pageSize() + 1);
 	protected readonly columnCount = 4;
 
 	// ----- Derivados para las cards -----

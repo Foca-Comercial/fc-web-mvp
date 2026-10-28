@@ -1,14 +1,11 @@
 <section class="space-y-2">
 	<h1 class="sr-only">Tablero de despachos del {{ clock.now() | bogotaDate: dateOptions }}</h1>
 
-	<!-- Búsqueda, filtros y acciones -->
-	<div class="rounded-2xl bg-white p-4 shadow-card">
-		<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.6fr_1fr_1fr_1fr_auto]">
-			<app-search-input placeholder="Buscar N° pedido o cliente" [(value)]="search" />
-			<app-filter-select label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
-			<app-filter-select label="Estado" allLabel="Todos los estados" [options]="statusOptions()" [(value)]="status" />
-			<app-filter-select label="Domiciliario" allLabel="Todos" [options]="driverOptions()" [(value)]="driver" />
-			<div class="flex items-center gap-2 sm:col-span-2 xl:col-span-1">
+	<!-- Búsqueda, filtros y acciones: dos filas para que nada se desborde -->
+	<div class="space-y-3 rounded-2xl bg-white p-4 shadow-card">
+		<div class="flex flex-wrap items-center gap-3">
+			<app-search-input class="min-w-0 flex-1 basis-64" placeholder="Buscar N° pedido o cliente" [(value)]="search" />
+			<div class="flex w-full items-center gap-2 sm:w-auto">
 				<button
 					app-icon-button
 					icon="arrow-path"
@@ -16,11 +13,16 @@
 					[disabled]="refreshing() || loading()"
 					(click)="refresh()"
 				></button>
-				<button type="button" class="btn-primary flex-1 whitespace-nowrap" (click)="newOrder()">
+				<button type="button" class="btn-primary flex-1 whitespace-nowrap sm:flex-none" (click)="newOrder()">
 					<app-icon name="plus" size="size-4" />
 					Nuevo pedido
 				</button>
 			</div>
+		</div>
+		<div class="grid gap-3 sm:grid-cols-3">
+			<app-filter-select label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
+			<app-filter-select label="Estado" allLabel="Todos los estados" [options]="statusOptions()" [(value)]="status" />
+			<app-filter-select label="Domiciliario" allLabel="Todos" [options]="driverOptions()" [(value)]="driver" />
 		</div>
 	</div>
 
@@ -181,17 +183,20 @@
 
 			<!-- Pie: conteo, hora de actualización y paginación -->
 			<div class="px-4 pb-2 sm:px-6">
-				<p class="flex flex-wrap items-center justify-center gap-x-3 pt-3 text-xs text-slate-500" aria-live="polite">
-					@if (summary()) {
-						<span>{{ summary() }}</span>
-					}
-					@if (lastUpdated(); as updatedAt) {
-						<span>Actualizado a las {{ updatedAt | bogotaDate: timeOptions }}</span>
-					}
-					@if (stale()) {
-						<span class="font-semibold text-warning-700">No se pudo actualizar</span>
-					}
-				</p>
+				<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-3">
+					<p class="flex flex-wrap items-center gap-x-3 text-xs text-slate-500" aria-live="polite">
+						@if (summary()) {
+							<span>{{ summary() }}</span>
+						}
+						@if (lastUpdated(); as updatedAt) {
+							<span>Actualizado a las {{ updatedAt | bogotaDate: timeOptions }}</span>
+						}
+						@if (stale()) {
+							<span class="font-semibold text-warning-700">No se pudo actualizar</span>
+						}
+					</p>
+					<app-page-size-select [options]="pageSizeOptions" [(size)]="pageSize" />
+				</div>
 				<app-pagination [totalPages]="pages()" [(page)]="page" />
 			</div>
 		</div>
