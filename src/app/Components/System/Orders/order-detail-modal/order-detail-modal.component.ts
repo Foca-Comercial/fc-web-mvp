@@ -44,7 +44,9 @@ import { OrderReceiptService } from '@core/Service/CoreModule/order-receipt.serv
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { parseApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
+import { todayBogota } from '@core/Utils/date.utils';
 import { orderCapabilities } from '@core/Utils/order-actions.utils';
+import { isScheduled } from '@core/Utils/schedule.utils';
 
 type DetailState =
 	| { status: 'idle' }
@@ -91,6 +93,7 @@ export class OrderDetailModalComponent {
 	private readonly reload$ = new Subject<LoadMode>();
 
 	protected readonly timeOnly: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
+	protected readonly longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
 
 	// Un solo flujo: cada cambio de pedido cancela la petición anterior (switchMap)
 	protected readonly detail = toSignal(
@@ -129,7 +132,7 @@ export class OrderDetailModalComponent {
 	});
 	protected readonly capabilities = computed(() => {
 		const order = this.order();
-		return order ? orderCapabilities(order.state) : null;
+		return order ? orderCapabilities(order.state, isScheduled(order.delivery_date, todayBogota())) : null;
 	});
 
 	// ----- Domiciliario -----

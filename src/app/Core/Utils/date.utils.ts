@@ -33,6 +33,11 @@ export function parseIsoDate(value: string): Date {
 	return new Date(year, month - 1, day);
 }
 
+// "2026-10-29" → "jueves, 29 de octubre de 2026" (calendario, sin zona horaria)
+export function formatIsoDateLong(value: string): string {
+	return new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(parseIsoDate(value));
+}
+
 // Hora de la API ("14:05:00" o "14:05") → "2:05 p. m."
 export function formatApiTime(value: string | null | undefined): string {
 	if (!value) return '';

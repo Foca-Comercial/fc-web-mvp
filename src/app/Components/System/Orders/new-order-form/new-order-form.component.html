@@ -115,8 +115,26 @@
 	}
 
 	@if (showOrderFields()) {
-		<!-- Hora y domiciliario -->
+		<!-- Día, hora y domiciliario -->
 		<section class="grid gap-4 sm:grid-cols-2" aria-label="Entrega">
+			<div>
+				<label for="new-order-date" class="form-label">Fecha de entrega</label>
+				<input
+					id="new-order-date"
+					type="date"
+					class="form-input"
+					[min]="today"
+					[max]="maxDate"
+					[value]="deliveryDate()"
+					[disabled]="saving()"
+					(input)="deliveryDate.set($any($event.target).value)"
+				/>
+				@if (dateError(); as message) {
+					<p class="form-error">{{ message }}</p>
+				} @else if (isScheduledDate()) {
+					<p class="mt-1.5 text-xs font-semibold text-brand-700">Pedido programado: aparecerá en el tablero ese día.</p>
+				}
+			</div>
 			<div>
 				<label for="new-order-time" class="form-label">Hora estimada de entrega (opcional)</label>
 				<input
@@ -128,7 +146,7 @@
 					(input)="deliveryTime.set($any($event.target).value)"
 				/>
 			</div>
-			<div>
+			<div class="sm:col-span-2">
 				<label for="new-order-driver" class="form-label">Domiciliario (opcional)</label>
 				<select
 					id="new-order-driver"

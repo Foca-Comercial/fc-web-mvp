@@ -1,8 +1,10 @@
 // ==================================================
 // Vista: Tablero de despachos
 // ==================================================
-// Pedidos del día en dos pestañas (pendientes / despachados). La API entrega el día
-// completo sin paginar, así que la búsqueda, los filtros y la paginación se hacen aquí
+// Pedidos del día en dos pestañas (pendientes / despachados). Por defecto es hoy; el selector
+// de día permite ver los pedidos PROGRAMADOS de días posteriores (hasta 60 días adelante).
+// De un día futuro se ven y se editan, pero no se despachan hasta su día. La API entrega el
+// día completo sin paginar, así que la búsqueda, los filtros y la paginación se hacen aquí
 // (ver order-board.utils). Se refresca solo cada minuto, sin molestar con alertas.
 //
 // Acciones por fila (ver reglas en order-actions.utils):
@@ -39,6 +41,7 @@ import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { ClockService } from '@core/Service/Clock/clock.service';
 import { OrderReceiptService } from '@core/Service/CoreModule/order-receipt.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
+import { formatIsoDateLong, todayBogota } from '@core/Utils/date.utils';
 import { orderCapabilities } from '@core/Utils/order-actions.utils';
 import {
 	BOARD_PAGE_SIZE,
@@ -57,6 +60,7 @@ import {
 	totalPages,
 	zoneOptions,
 } from '@core/Utils/order-board.utils';
+import { isScheduled, maxScheduleDate, scheduleError } from '@core/Utils/schedule.utils';
 
 type BoardTab = 'pending' | 'dispatched';
 // 'change' = recarga tras una acción del usuario: sin alertas como 'silent', pero nunca se descarta
@@ -106,6 +110,12 @@ export class OrdersBoardComponent {
 	private inFlight = false;
 	private reloadQueued = false; // se pidió recargar mientras otra carga estaba en curso
 
+	// ----- Día que se está viendo (hoy o un día programado) -----
+	protected readonly today = todayBogota();
+	protected readonly maxDate = maxScheduleDate(this.today);
+	protected readonly day = signal(this.today);
+	protected readonly isFutureDay = computed(() => isScheduled(this.day(), this.today));
+
 	// ----- Pestañas y filtros -----
 	protected readonly tab = signal<BoardTab>('pending');
 	protected readonly search = signal('');
@@ -139,14 +149,14 @@ export class OrdersBoardComponent {
 	protected readonly hasFilters = computed(() => Object.values(this.filters()).some(Boolean));
 
 	// Depende de `clock.now()`: el filtro de Estado (Próximo / Retrasado) se reevalúa con el reloj
-	private readonly filtered = computed(() => filterOrders(this.activeRows(), this.filters(), this.clock.now()));
+	private readonly filtered = computed(() => filterOrders(this.activeRows(), this.filters(), this.clock.now(), this.day()));
 	private readonly sorted = computed(() => sortOrders(this.filtered(), this.sort()));
 	protected readonly pages = computed(() => totalPages(this.filtered().length, this.pageSize()));
 
 	// Vuelve a la página 1 al cambiar de pestaña o de filtros; si el refresco deja menos
 	// páginas que la actual, se queda en la última
 	protected readonly page = linkedSignal<{ key: string; pages: number }, number>({
-		source: () => ({ key: JSON.stringify([this.tab(), this.filters(), this.sort(), this.pageSize()]), pages: this.pages() }),
+		source: () => ({ key: JSON.stringify([this.day(), this.tab(), this.filters(), this.sort(), this.pageSize()]), pages: this.pages() }),
 		computation: (source, previous) =>
 			previous && previous.source.key === source.key ? Math.min(previous.value, source.pages) : 1,
 	});
@@ -164,6 +174,7 @@ export class OrdersBoardComponent {
 	});
 
 	protected readonly dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+	protected readonly dayOptions: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
 	protected readonly timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
 
 	constructor() {
@@ -191,6 +202,22 @@ export class OrdersBoardComponent {
 		void this.load('manual');
 	}
 
+	// Cambia el día que se ve. Solo de hoy en adelante: los pedidos de días anteriores no se
+	// gestionan aquí. Las filas del día anterior se vacían para no mostrarlas mientras carga.
+	protected setDay(value: string): void {
+		if (!value || value === this.day() || scheduleError(value, this.today) !== null) return;
+		this.day.set(value);
+		this.pendingRows.set([]);
+		this.dispatchedRows.set([]);
+		this.lastUpdated.set(null);
+		this.loading.set(true);
+		void this.load('initial');
+	}
+
+	protected goToday(): void {
+		this.setDay(this.today);
+	}
+
 	// Al volver a la pestaña del navegador, se actualiza si los datos ya tienen más de un minuto
 	protected onVisibilityChange(): void {
 		const last = this.lastUpdated();
@@ -204,12 +231,19 @@ export class OrdersBoardComponent {
 			return;
 		}
 		this.inFlight = true;
+		let discarded = false;
 		if (mode === 'manual') this.refreshing.set(true);
 
 		try {
+			const day = this.day();
 			const [pending, dispatched] = await firstValueFrom(
-				forkJoin([this.orders.getDashboardSummary(), this.orders.getDispatchedSummary()])
+				forkJoin([this.orders.getDashboardSummary(day), this.orders.getDispatchedSummary(day)])
 			);
+			// Si el usuario cambió de día mientras llegaba la respuesta, esta ya no corresponde
+			if (day !== this.day()) {
+				discarded = true;
+				return;
+			}
 			this.pendingRows.set(pending);
 			this.dispatchedRows.set(dispatched);
 			this.lastUpdated.set(new Date());
@@ -222,7 +256,8 @@ export class OrdersBoardComponent {
 			await this.apiAlert.handleError(error, 'No se pudo cargar el tablero');
 		} finally {
 			this.inFlight = false;
-			this.loading.set(false);
+			// Con una respuesta descartada (cambió el día) sigue el skeleton hasta que llegue la nueva
+			if (!discarded) this.loading.set(false);
 			this.refreshing.set(false);
 			if (this.reloadQueued) {
 				this.reloadQueued = false;
@@ -349,9 +384,13 @@ export class OrdersBoardComponent {
 	private async offerAnotherOrder(order: OrderWithDetails): Promise<void> {
 		// Deja que el modal termine de cerrarse: una alerta sobre un <dialog> modal quedaría inerte
 		await new Promise((resolve) => setTimeout(resolve, 100));
+		// Un pedido de otro día no se ve en el tablero actual: se avisa para qué día quedó
+		const elsewhere = order.delivery_date !== this.day();
 		const another = await this.alert.confirm({
-			title: `Pedido ${order.purchase_order} registrado`,
-			text: '¿Quieres registrar otro pedido?',
+			title: elsewhere ? `Pedido ${order.purchase_order} programado` : `Pedido ${order.purchase_order} registrado`,
+			text: elsewhere
+				? `Quedó programado para el ${formatIsoDateLong(order.delivery_date)}; lo verás en el tablero ese día. ¿Quieres registrar otro pedido?`
+				: '¿Quieres registrar otro pedido?',
 			icon: 'success',
 			confirmText: 'Sí, registrar otro',
 			cancelText: 'No, listo',

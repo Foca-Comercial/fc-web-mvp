@@ -42,7 +42,8 @@ export const BOARD_STATUS_LABELS: Record<BoardStatusKey, string> = {
 export const PENDING_TAB_STATUSES: readonly BoardStatusKey[] = ['pending', 'soon', 'late', 'cancelled'];
 export const DISPATCHED_TAB_STATUSES: readonly BoardStatusKey[] = ['dispatched', 'delivered'];
 
-export function boardStatusKey(row: OrderSummary, now: Date): BoardStatusKey {
+// `day`: el día que se está viendo ("AAAA-MM-DD"); un día futuro nunca está Próximo ni Retrasado
+export function boardStatusKey(row: OrderSummary, now: Date, day?: string | null): BoardStatusKey {
 	switch (row.state) {
 		case OrderState.DISPATCHED:
 			return 'dispatched';
@@ -51,7 +52,7 @@ export function boardStatusKey(row: OrderSummary, now: Date): BoardStatusKey {
 		case OrderState.CANCELLED:
 			return 'cancelled';
 		default: {
-			const { tone } = computeDeliveryStatus(row.state, row.estimated_delivery, now);
+			const { tone } = computeDeliveryStatus(row.state, row.estimated_delivery, now, day);
 			return tone === 'soon' || tone === 'late' ? tone : 'pending';
 		}
 	}
@@ -73,13 +74,13 @@ function matchesDriver(row: OrderSummary, driver: string): boolean {
 	return driver === NO_DRIVER ? !row.driver_code : row.driver_code === driver;
 }
 
-export function filterOrders(rows: readonly OrderSummary[], filters: BoardFilters, now: Date): OrderSummary[] {
+export function filterOrders(rows: readonly OrderSummary[], filters: BoardFilters, now: Date, day?: string | null): OrderSummary[] {
 	return rows.filter(
 		(row) =>
 			matchesSearch(row, filters.search) &&
 			(!filters.zone || row.zone_name === filters.zone) &&
 			matchesDriver(row, filters.driver) &&
-			(!filters.status || boardStatusKey(row, now) === filters.status)
+			(!filters.status || boardStatusKey(row, now, day) === filters.status)
 	);
 }
 

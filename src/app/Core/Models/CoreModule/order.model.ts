@@ -10,14 +10,15 @@ import { NewClientInput } from './catalog.model';
 // ----- Respuestas -----
 export interface Order {
 	id_order: number;
-	purchase_order: string; // consecutivo del día: "001", "002"…
+	purchase_order: string; // consecutivo del día de entrega: "001", "002"…
 	estimated_delivery: TimeString | null;
 	order_total: Money | null;
 	id_client: number;
 	id_user_vehicle: number | null;
 	id_user_taker: number;
 	id_route: number | null;
-	creation_datetime: IsoDateTime;
+	creation_datetime: IsoDateTime; // cuándo se tomó el pedido (auditoría)
+	delivery_date: IsoDate; // día de entrega: normalmente hoy; un pedido programado lo trae a futuro
 	dispatch_time: TimeString | null;
 	delivery_time: TimeString | null;
 	state: OrderState;
@@ -44,6 +45,7 @@ export interface OrderItemInput {
 }
 
 interface OrderCreateBase {
+	delivery_date?: IsoDate | null; // sin enviar = hoy; programado: hoy o posterior, hasta 60 días
 	estimated_delivery?: TimeString | null;
 	id_user_vehicle?: number | null;
 	items: OrderItemInput[]; // al menos uno, sin productos repetidos
@@ -62,9 +64,11 @@ export interface OrderCreateExistingClient extends OrderCreateBase {
 // PATCH /orders/{id}: parcial, solo se modifica lo que se envía.
 // - id_user_vehicle: asigna o cambia el domiciliario (null desasigna); hasta que el pedido sea final.
 // - estimated_delivery: hora estimada (null la quita); solo mientras el pedido está PENDING.
+// - delivery_date: día de entrega (no admite null); solo en PENDING. Cambiarlo asigna un PO nuevo del día de destino.
 export interface OrderUpdate {
 	id_user_vehicle?: number | null;
 	estimated_delivery?: TimeString | null;
+	delivery_date?: IsoDate;
 }
 
 // PUT /orders/{id}/items-order: lista FINAL deseada
@@ -109,6 +113,7 @@ export interface OrderFullDetail {
 	id_order: number;
 	purchase_order: string;
 	creation_datetime: IsoDateTime;
+	delivery_date: IsoDate;
 	estimated_delivery: TimeString | null;
 	dispatch_time: TimeString | null;
 	delivery_time: TimeString | null;

@@ -4,7 +4,7 @@
 		@let order = state.order;
 
 		<div class="mb-5 flex flex-wrap items-center gap-3">
-			<app-order-status-badge [state]="order.state" [estimatedDelivery]="order.estimated_delivery" />
+			<app-order-status-badge [state]="order.state" [estimatedDelivery]="order.estimated_delivery" [orderDate]="order.delivery_date" />
 			<span class="text-sm text-slate-500">
 				Creado a las {{ order.creation_datetime | bogotaDate: timeOnly }}
 			</span>
@@ -26,6 +26,10 @@
 			<div>
 				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Barrio · Zona</dt>
 				<dd class="mt-0.5 text-slate-800">{{ order.neighborhood_name }} · {{ order.zone_name }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Fecha de entrega</dt>
+				<dd class="mt-0.5 text-slate-800 first-letter:uppercase">{{ order.delivery_date | bogotaDate: longDate }}</dd>
 			</div>
 			<div>
 				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Entrega estimada</dt>

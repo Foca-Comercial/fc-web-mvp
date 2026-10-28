@@ -15,9 +15,11 @@ export interface OrderCapabilities {
 	canPrintReceipt: boolean; // el CD solo existe desde que se despacha
 }
 
-export function orderCapabilities(state: OrderState): OrderCapabilities {
+// `scheduled`: el pedido es de un día posterior a hoy (ver schedule.utils). Se puede ver y
+// editar, pero no despachar hasta su día (la API responde 422 ORDER_SCHEDULED).
+export function orderCapabilities(state: OrderState, scheduled = false): OrderCapabilities {
 	return {
-		canDispatch: state === OrderState.PENDING,
+		canDispatch: state === OrderState.PENDING && !scheduled,
 		canDeliver: state === OrderState.DISPATCHED,
 		canEdit: state === OrderState.PENDING,
 		canChangeDriver: state === OrderState.PENDING || state === OrderState.DISPATCHED,

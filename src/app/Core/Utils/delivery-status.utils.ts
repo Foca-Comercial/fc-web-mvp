@@ -9,6 +9,7 @@
 //       en otro caso           → "Pendiente"
 //   - PENDING sin hora estimada → "Pendiente"
 //   - PENDING de un día anterior → "Retrasado"
+//   - PENDING programado para un día posterior → "Programado" (sin Próximo ni Retrasado)
 //   - DISPATCHED → "Despachado" · DELIVERED → "Entregado" · CANCELLED → "Cancelado"
 //
 // Es una función pura (recibe `now`) para poder probarla sin depender del reloj.
@@ -62,7 +63,8 @@ function minutesText(minutes: number): string {
  * @param estimatedDelivery  `estimated_delivery` ("HH:MM:SS") o null
  * @param now                instante de referencia (por defecto, ahora)
  * @param orderDate          "AAAA-MM-DD" del día que se está viendo; si es anterior a
- *                           hoy y el pedido sigue pendiente, ya está retrasado
+ *                           hoy y el pedido sigue pendiente, ya está retrasado; si es
+ *                           posterior, el pedido está "Programado" (su hora aún no corre)
  */
 export function computeDeliveryStatus(
 	state: OrderState,
@@ -80,6 +82,9 @@ export function computeDeliveryStatus(
 	}
 
 	// PENDING
+	if (orderDate && orderDate > toIsoDateBogota(now)) {
+		return { tone: 'pending', label: 'Programado', detail: 'Pedido programado para otro día' };
+	}
 	if (orderDate && orderDate < toIsoDateBogota(now)) {
 		return { tone: 'late', label: 'Retrasado', detail: 'Pedido de un día anterior sin despachar' };
 	}

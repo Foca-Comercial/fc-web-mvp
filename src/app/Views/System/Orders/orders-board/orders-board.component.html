@@ -1,10 +1,29 @@
 <section class="space-y-2">
-	<h1 class="sr-only">Tablero de despachos del {{ clock.now() | bogotaDate: dateOptions }}</h1>
+	<h1 class="sr-only">Tablero de despachos del {{ day() | bogotaDate: dateOptions }}</h1>
 
 	<!-- Búsqueda, filtros y acciones: dos filas para que nada se desborde -->
 	<div class="space-y-3 rounded-2xl bg-white p-4 shadow-card">
 		<div class="flex flex-wrap items-center gap-3">
 			<app-search-input class="min-w-0 flex-1 basis-64" placeholder="Buscar N° pedido o cliente" [(value)]="search" />
+			<div class="flex items-center gap-2">
+				<label for="board-day" class="sr-only">Día de los pedidos</label>
+				<!-- .form-input fija width:100%, por eso el ancho va en el contenedor -->
+				<div class="w-44">
+					<input
+						id="board-day"
+						type="date"
+						class="form-input"
+						[min]="today"
+						[max]="maxDate"
+						[value]="day()"
+						[disabled]="loading()"
+						(change)="setDay($any($event.target).value); $any($event.target).value = day()"
+					/>
+				</div>
+				@if (isFutureDay()) {
+					<button type="button" class="btn-secondary whitespace-nowrap" [disabled]="loading()" (click)="goToday()">Hoy</button>
+				}
+			</div>
 			<div class="flex w-full items-center gap-2 sm:w-auto">
 				<button
 					app-icon-button
@@ -25,6 +44,12 @@
 			<app-filter-select label="Domiciliario" allLabel="Todos" [options]="driverOptions()" [(value)]="driver" />
 		</div>
 	</div>
+
+	@if (isFutureDay()) {
+		<p class="rounded-2xl bg-brand-50 px-4 py-3 text-sm text-brand-900" role="status">
+			Pedidos programados para el <strong>{{ day() | bogotaDate: dayOptions }}</strong>. Se podrán despachar ese día.
+		</p>
+	}
 
 	<!-- Pestañas + tarjeta -->
 	<div>
@@ -103,7 +128,7 @@
 										}
 									</td>
 									<td>
-										<app-order-status-badge [state]="row.state" [estimatedDelivery]="row.estimated_delivery" />
+										<app-order-status-badge [state]="row.state" [estimatedDelivery]="row.estimated_delivery" [orderDate]="day()" />
 										@if (row.estimated_delivery && row.state === OrderState.PENDING) {
 											<span class="mt-1 block text-xs tabular-nums text-slate-500">
 												Entrega {{ row.estimated_delivery | apiTime }}
@@ -111,7 +136,7 @@
 										}
 									</td>
 									<td>
-										@let actions = orderCapabilities(row.state);
+										@let actions = orderCapabilities(row.state, isFutureDay());
 										<div class="flex items-center justify-center gap-2">
 											<button
 												app-icon-button
@@ -166,7 +191,10 @@
 							<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
 						</app-empty-state>
 					} @else if (tab() === 'pending') {
-						<app-empty-state title="No hay pedidos pendientes" description="Los nuevos pedidos aparecerán aquí.">
+						<app-empty-state
+							[title]="isFutureDay() ? 'No hay pedidos programados para este día' : 'No hay pedidos pendientes'"
+							[description]="isFutureDay() ? 'Al crear un pedido puedes elegir su fecha de entrega.' : 'Los nuevos pedidos aparecerán aquí.'"
+						>
 							<button type="button" class="btn-primary" (click)="newOrder()">
 								<app-icon name="plus" size="size-4" />
 								Nuevo pedido
@@ -203,7 +231,7 @@
 	</div>
 </section>
 
-<app-new-order-modal [(open)]="newOrderOpen" (created)="onOrderCreated($event)" />
+<app-new-order-modal [(open)]="newOrderOpen" [deliveryDate]="day()" (created)="onOrderCreated($event)" />
 
 <app-order-detail-modal
 	[orderId]="selectedId()"

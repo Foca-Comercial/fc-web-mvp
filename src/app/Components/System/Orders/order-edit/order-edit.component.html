@@ -1,15 +1,35 @@
 <div class="space-y-5">
-	<div class="max-w-xs">
-		<label for="order-edit-time" class="form-label">Hora estimada de entrega</label>
-		<input
-			id="order-edit-time"
-			type="time"
-			class="form-input"
-			[value]="deliveryTime()"
-			[disabled]="saving()"
-			(input)="deliveryTime.set($any($event.target).value)"
-		/>
-		<p class="mt-1.5 text-xs text-slate-500">Déjala vacía si el pedido no tiene hora definida.</p>
+	<div class="grid max-w-xl gap-4 sm:grid-cols-2">
+		<div>
+			<label for="order-edit-date" class="form-label">Fecha de entrega</label>
+			<input
+				id="order-edit-date"
+				type="date"
+				class="form-input"
+				[min]="today"
+				[max]="maxDate"
+				[value]="deliveryDate()"
+				[disabled]="saving()"
+				(input)="deliveryDate.set($any($event.target).value)"
+			/>
+			@if (dateError(); as message) {
+				<p class="form-error">{{ message }}</p>
+			} @else if (dateDirty()) {
+				<p class="mt-1.5 text-xs text-slate-500">Con otro día, el pedido recibe un nuevo número (PO) de ese día.</p>
+			}
+		</div>
+		<div>
+			<label for="order-edit-time" class="form-label">Hora estimada de entrega</label>
+			<input
+				id="order-edit-time"
+				type="time"
+				class="form-input"
+				[value]="deliveryTime()"
+				[disabled]="saving()"
+				(input)="deliveryTime.set($any($event.target).value)"
+			/>
+			<p class="mt-1.5 text-xs text-slate-500">Déjala vacía si el pedido no tiene hora definida.</p>
+		</div>
 	</div>
 
 	<div>

@@ -2,7 +2,9 @@
 // Componente: <app-new-order-form>
 // ==================================================
 // Registro de un pedido nuevo, con dos formularios distintos que comparten lo demás
-// (hora estimada, domiciliario y productos):
+// (fecha y hora de entrega, domiciliario y productos). La fecha de entrega es hoy por defecto;
+// con otra fecha (hasta 60 días adelante) el pedido queda programado y solo aparece en el
+// tablero ese día:
 //   - Cliente existente: se busca entre los clientes registrados → POST /orders/existing-client.
 //   - Cliente nuevo: se piden nombre, teléfono, dirección y barrio → POST /orders/new-client
 //     (el cliente queda como temporal).
@@ -12,7 +14,7 @@
 // Se monta solo mientras el modal está abierto (ver new-order-modal), así cada vez empieza
 // en blanco. Los errores van en línea porque esto vive dentro de un <dialog> modal.
 
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, firstValueFrom, map, of, startWith, switchMap } from 'rxjs';
 
@@ -28,6 +30,7 @@ import { ProductService } from '@core/Service/CoreModule/product.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { NeighborhoodService } from '@core/Service/ParametersModule/neighborhood.service';
 import { describeApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
+import { todayBogota } from '@core/Utils/date.utils';
 import {
 	EMPTY_NEW_CLIENT,
 	MAX_CLIENT_ADDRESS_LENGTH,
@@ -42,6 +45,7 @@ import {
 	sortNeighborhoods,
 } from '@core/Utils/new-order.utils';
 import { EditorLine, itemsProblem } from '@core/Utils/order-items.utils';
+import { isScheduled, maxScheduleDate, scheduleError } from '@core/Utils/schedule.utils';
 
 type OrderMode = 'existing' | 'new';
 
@@ -57,6 +61,8 @@ export class NewOrderFormComponent {
 	private readonly userVehicles = inject(UserVehicleService);
 	private readonly neighborhoodService = inject(NeighborhoodService);
 
+	// Día con el que arranca el formulario (el que se está viendo en el tablero); por defecto, hoy
+	readonly defaultDate = input<string | null>(null);
 	readonly created = output<OrderWithDetails>();
 	readonly cancelled = output<void>();
 
@@ -87,6 +93,11 @@ export class NewOrderFormComponent {
 	protected readonly clientErrors = computed(() => newClientErrors(this.draft()));
 
 	// ----- Pedido -----
+	protected readonly today = todayBogota();
+	protected readonly maxDate = maxScheduleDate(this.today);
+	protected readonly deliveryDate = linkedSignal(() => this.defaultDate() ?? this.today);
+	protected readonly dateError = computed(() => scheduleError(this.deliveryDate(), this.today));
+	protected readonly isScheduledDate = computed(() => isScheduled(this.deliveryDate(), this.today));
 	protected readonly deliveryTime = signal('');
 	protected readonly driverId = signal<number | null>(null);
 
@@ -124,7 +135,7 @@ export class NewOrderFormComponent {
 	protected readonly canSubmit = computed(() => {
 		if (this.saving()) return false;
 		const clientOk = this.mode() === 'existing' ? this.client() !== null : !hasErrors(this.clientErrors());
-		return clientOk && this.itemsError() === null;
+		return clientOk && this.dateError() === null && this.itemsError() === null;
 	});
 
 	protected setMode(mode: OrderMode): void {
@@ -150,7 +161,7 @@ export class NewOrderFormComponent {
 		this.submitted.set(true);
 		if (!this.canSubmit()) return;
 
-		const extras = { deliveryTime: this.deliveryTime(), driverId: this.driverId() };
+		const extras = { deliveryDate: this.deliveryDate(), deliveryTime: this.deliveryTime(), driverId: this.driverId() };
 		const client = this.client();
 		this.saving.set(true);
 		this.serverErrors.set([]);
