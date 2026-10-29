@@ -87,3 +87,26 @@ export interface PurgeResult {
 	deleted_order_counters: number;
 	deleted_expired_sessions: number;
 }
+
+// ----- Vista Archivo mensual: GET /archive/months -----
+export interface ArchiveMonthRow {
+	month: string; // "AAAA-MM"
+	orders_count: number; // pedidos del mes que siguen en la BD
+	total_sales: Money; // sin cancelados
+	status: ArchiveStatus | null; // null = nunca se ha copiado a Sheets
+	exported_at: IsoDateTime | null;
+	purged_at: IsoDateTime | null;
+	exported_orders: number | null; // pedidos en la última copia (o los purgados)
+	spreadsheet_url: string | null; // spreadsheet del año; null = no registrado
+	retained: boolean; // dentro de la retención: se copia, pero no se purga
+	unclosed_days: IsoDate[]; // días facturables sin cierre exportado: impiden purgar
+	can_export: boolean;
+	can_purge: boolean;
+}
+
+export interface ArchiveOverview {
+	current_month: string; // "AAAA-MM"
+	first_retained_month: string; // los meses anteriores se pueden purgar
+	retention_months: number;
+	months: ArchiveMonthRow[]; // del más reciente al más antiguo
+}

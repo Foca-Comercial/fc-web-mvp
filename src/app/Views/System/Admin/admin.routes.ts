@@ -4,11 +4,10 @@
 // Solo ADMINISTRADOR. La protección está en la ruta padre de system.routes.ts
 // (canMatch: roleMatchGuard, sin `data.roles`): un GESTOR_COMERCIAL no descarga este
 // chunk, así que las hijas no repiten el guard.
-// Cada subsección se carga por separado (loadComponent) al construirla; mientras
-// tanto ComingSoonComponent ocupa su lugar. El menú las lista en NavigationService.
+// Cada subsección se carga por separado (loadComponent). El menú las lista en
+// NavigationService.
 
 import { Routes } from '@angular/router';
-import { ComingSoonComponent } from '@components/Shared/coming-soon/coming-soon.component';
 import { ADMIN_PATHS } from '@core/Constants/app-routes';
 
 const pageTitle = (section: string): string => `${section} · Administración · Foca Comercial`;
@@ -45,7 +44,6 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.ARCHIVE,
 		title: pageTitle('Archivo mensual'),
-		component: ComingSoonComponent,
-		data: { title: 'Archivo mensual' },
+		loadComponent: () => import('./Archive/archive-admin/archive-admin.component').then((m) => m.ArchiveAdminComponent),
 	},
 ];

@@ -18,6 +18,9 @@ export interface EditorLine {
 	name: string;
 	cant: number; // 0 mientras el usuario la está escribiendo
 	priceText: string; // "12500" o "12500.5"; vacío si se borró
+	// Producto desactivado después de tomar el pedido: se conserva en su renglón, pero si
+	// se quita ya no se puede volver a agregar (no está en el catálogo)
+	inactive?: boolean;
 }
 
 // ----- Construcción -----
@@ -29,6 +32,7 @@ export function linesFromItems(items: readonly OrderDetailItem[]): EditorLine[] 
 		name: item.product_name,
 		cant: item.cant,
 		priceText: String(toNumber(item.unit_price)),
+		inactive: item.product_active === false,
 	}));
 }
 

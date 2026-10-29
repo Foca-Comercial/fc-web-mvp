@@ -104,6 +104,9 @@ export interface OrderDetailItem {
 	id_product: number;
 	product_code: string;
 	product_name: string;
+	// false = se desactivó después de tomar el pedido: el renglón se conserva (cantidad y
+	// precio editables, o quitarlo), pero no se puede volver a agregar
+	product_active: boolean;
 	cant: number;
 	unit_price: Money;
 	subtotal: Money;
