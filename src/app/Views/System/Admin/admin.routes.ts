@@ -35,8 +35,7 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.VEHICLES,
 		title: pageTitle('Vehículos'),
-		component: ComingSoonComponent,
-		data: { title: 'Vehículos' },
+		loadComponent: () => import('./Vehicles/vehicles-admin/vehicles-admin.component').then((m) => m.VehiclesAdminComponent),
 	},
 	{
 		path: ADMIN_PATHS.ROUTES,

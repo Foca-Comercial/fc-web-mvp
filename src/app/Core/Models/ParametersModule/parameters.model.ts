@@ -84,3 +84,17 @@ export type VehicleUpdate = Partial<VehicleCreate>;
 export interface Vehicle extends Required<VehicleCreate> {
 	id_vehicle: number;
 }
+
+// Panel de administración (/vehicles/admin). Crear usa VehicleCreate y editar
+// VehicleUpdate (PATCH parcial; { active: false } desactiva, { active: true } reactiva).
+export interface VehicleAdminFilters {
+	search: string; // nombre (contiene); '' = sin filtro
+	active: boolean | null; // null = activos e inactivos
+}
+
+export interface VehicleAdminRow {
+	id_vehicle: number;
+	name: string;
+	active: boolean;
+	assignments_count: number; // asignaciones activas (domiciliario + código) con este vehículo
+}
