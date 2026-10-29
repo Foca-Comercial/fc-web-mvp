@@ -10,6 +10,8 @@ import {
 	ClientAdminRow,
 	ClientAdminUpdate,
 	ClientCreate,
+	ClientSpecialPrice,
+	ClientSpecialPriceSet,
 	ClientUpdate,
 } from '@core/Models/CoreModule/catalog.model';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
@@ -43,5 +45,22 @@ export class ClientService extends GenericService<Client, ClientCreate, ClientUp
 	// Editar, desactivar ({ active: false }) o reactivar ({ active: true })
 	updateAdmin(id: number, changes: ClientAdminUpdate): Observable<ClientAdminRow> {
 		return this.http.patch<ClientAdminRow>(`${this.baseUrl}/admin/${id}`, changes);
+	}
+
+	// ----- Precios especiales del cliente (uno por producto) -----
+
+	// Todos sus precios, por código de producto (incluye productos inactivos)
+	getSpecialPrices(idClient: number): Observable<ClientSpecialPrice[]> {
+		return this.http.get<ClientSpecialPrice[]>(`${this.baseUrl}/admin/${idClient}/special-prices`);
+	}
+
+	// Asigna o cambia el precio pactado del producto (la API hace upsert)
+	setSpecialPrice(idClient: number, idProduct: number, agreedPrice: number): Observable<ClientSpecialPrice> {
+		const body: ClientSpecialPriceSet = { agreed_price: agreedPrice };
+		return this.http.put<ClientSpecialPrice>(`${this.baseUrl}/admin/${idClient}/special-prices/${idProduct}`, body);
+	}
+
+	removeSpecialPrice(idClient: number, idProduct: number): Observable<void> {
+		return this.http.delete<void>(`${this.baseUrl}/admin/${idClient}/special-prices/${idProduct}`);
 	}
 }

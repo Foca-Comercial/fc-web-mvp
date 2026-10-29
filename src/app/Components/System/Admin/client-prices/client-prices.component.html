@@ -1,0 +1,176 @@
+<div class="space-y-4">
+	<p class="text-sm text-slate-600">
+		Precios pactados con <strong class="text-slate-900">{{ client().name }}</strong>. Se usan al tomar sus pedidos y en sus rutas
+		(en una ruta solo se le ofrecen estos productos). Un cambio aplica a los pedidos que se tomen después.
+	</p>
+
+	<!-- Precios -->
+	@if (rows() === undefined) {
+		<div class="space-y-2" aria-busy="true" aria-label="Cargando los precios">
+			<app-skeleton class="h-14 w-full rounded-xl" />
+			<app-skeleton class="h-14 w-full rounded-xl" />
+			<app-skeleton class="h-14 w-full rounded-xl" />
+		</div>
+	} @else if (rows() === null) {
+		<div class="rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700">
+			No se pudieron cargar los precios.
+			<button type="button" class="ml-1 font-semibold underline" (click)="retry()">Reintentar</button>
+		</div>
+	} @else {
+		@if (rows()!.length === 0 && !adding()) {
+			<p class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+				Este cliente no tiene precios especiales: toma sus pedidos con el precio base. Agrega un producto para pactarle otro precio.
+			</p>
+		}
+
+		@if (rows()!.length > 0) {
+			<ul class="divide-y divide-slate-200 rounded-xl border border-slate-200" aria-label="Precios especiales">
+				@for (row of rows(); track row.id_product) {
+					@let text = textFor(row);
+					@let delta = deltaFor(row);
+					@let rowBusy = busy() === row.id_product;
+					<li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 sm:flex-nowrap">
+						<!-- Producto -->
+						<div class="w-full min-w-0 sm:w-auto sm:flex-1">
+							<p class="truncate text-sm">
+								<span class="font-semibold tabular-nums text-brand-900">{{ row.product_code }}</span>
+								<span class="text-slate-800"> · {{ row.product_name }}</span>
+							</p>
+							<p class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+								Base {{ row.base_price | cop }}
+								@if (!row.product_active) {
+									<app-status-badge tone="neutral" hint="No se ofrece en los pedidos mientras esté inactivo">Producto inactivo</app-status-badge>
+								}
+							</p>
+						</div>
+
+						@if (confirmRemove() === row.id_product) {
+							<!-- Confirmación en línea -->
+							<div class="flex items-center gap-2 text-sm" role="group" [attr.aria-label]="'Quitar el precio de ' + row.product_name">
+								<span class="font-semibold text-danger-700">¿Quitar este precio?</span>
+								<button type="button" class="inline-flex h-8 items-center whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" [disabled]="rowBusy" (click)="cancelRemove()">No</button>
+								<button type="button" class="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-danger-600 px-3 text-xs font-semibold text-white transition hover:bg-danger-700 disabled:cursor-not-allowed disabled:opacity-60" [disabled]="rowBusy" (click)="remove(row)">
+									{{ rowBusy ? 'Quitando…' : 'Sí, quitar' }}
+								</button>
+							</div>
+						} @else {
+							<!-- Precio pactado -->
+							<div class="flex items-center gap-1.5">
+								<label class="text-xs text-slate-500" [for]="'price-' + row.id_product">$</label>
+								<input
+									type="text"
+									inputmode="decimal"
+									autocomplete="off"
+									class="h-8 w-28 rounded-lg border bg-white px-2 text-right text-sm font-semibold tabular-nums text-slate-900 outline-none transition focus:ring-3 focus:ring-brand-500/25"
+									[class]="validText(text) ? 'border-slate-300 focus:border-brand-500' : 'border-danger-500'"
+									[id]="'price-' + row.id_product"
+									[value]="text"
+									[disabled]="busy() !== null"
+									[attr.aria-label]="'Precio pactado de ' + row.product_name"
+									[attr.aria-invalid]="!validText(text)"
+									(input)="setText(row, $any($event.target))"
+									(keydown.enter)="save(row)"
+								/>
+							</div>
+
+							<!-- Diferencia con el base -->
+							<span
+								class="w-20 text-right text-xs font-semibold tabular-nums"
+								[class]="delta?.tone === 'lower' ? 'text-success-700' : delta?.tone === 'higher' ? 'text-warning-700' : 'text-slate-500'"
+							>
+								{{ delta?.label ?? '—' }}
+							</span>
+
+							<!-- Acciones -->
+							<div class="flex items-center gap-2">
+								@if (changedRow(row)) {
+									<button type="button" class="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60" [disabled]="busy() !== null" (click)="save(row)">
+										{{ rowBusy ? 'Guardando…' : 'Guardar' }}
+									</button>
+									<button
+										app-icon-button
+										icon="arrow-uturn-left"
+										[label]="'Deshacer el cambio de ' + row.product_name"
+										[disabled]="busy() !== null"
+										(click)="undo(row)"
+									></button>
+								} @else {
+									<button
+										app-icon-button
+										icon="trash"
+										tone="danger"
+										[label]="'Quitar el precio de ' + row.product_name"
+										[disabled]="busy() !== null"
+										(click)="askRemove(row)"
+									></button>
+								}
+							</div>
+						}
+					</li>
+				}
+			</ul>
+		}
+
+		<!-- Agregar un producto -->
+		@if (adding(); as add) {
+			@let addDelta = addingDelta(add);
+			<div class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-brand-300 bg-brand-50 px-3 py-2.5 sm:flex-nowrap">
+				<div class="w-full min-w-0 sm:w-auto sm:flex-1">
+					<p class="truncate text-sm">
+						<span class="font-semibold tabular-nums text-brand-900">{{ add.product.code }}</span>
+						<span class="text-slate-800"> · {{ add.product.name }}</span>
+					</p>
+					<p class="text-xs text-slate-500">Base {{ add.product.base_price | cop }}</p>
+				</div>
+				<div class="flex items-center gap-1.5">
+					<label class="text-xs text-slate-500" for="price-new">$</label>
+					<input
+						id="price-new"
+						type="text"
+						inputmode="decimal"
+						autocomplete="off"
+						class="h-8 w-28 rounded-lg border bg-white px-2 text-right text-sm font-semibold tabular-nums text-slate-900 outline-none transition focus:ring-3 focus:ring-brand-500/25"
+						[class]="validText(add.text) ? 'border-slate-300 focus:border-brand-500' : 'border-danger-500'"
+						[value]="add.text"
+						[disabled]="busy() !== null"
+						[attr.aria-label]="'Precio pactado de ' + add.product.name"
+						[attr.aria-invalid]="!validText(add.text)"
+						(input)="setAddingText($any($event.target))"
+						(keydown.enter)="confirmAdd()"
+					/>
+				</div>
+				<span class="w-20 text-right text-xs font-semibold tabular-nums text-slate-500">{{ addDelta?.label ?? '—' }}</span>
+				<div class="flex items-center gap-2">
+					<button type="button" class="inline-flex h-8 items-center whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" [disabled]="busy() !== null" (click)="cancelAdd()">Cancelar</button>
+					<button type="button" class="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60" [disabled]="busy() !== null || !validText(add.text)" (click)="confirmAdd()">
+						{{ busy() === add.product.id_product ? 'Agregando…' : 'Agregar' }}
+					</button>
+				</div>
+			</div>
+		} @else {
+			@if (catalog() === undefined) {
+				<app-skeleton class="h-11 w-full rounded-xl" />
+			} @else if (catalog() === null) {
+				<p class="text-sm font-semibold text-warning-700">No se pudo cargar el catálogo de productos para agregar precios.</p>
+			} @else {
+				<app-item-picker
+					placeholder="Agregar producto con precio especial…"
+					ariaLabel="Agregar producto con precio especial"
+					emptyText="Todos los productos activos ya tienen precio pactado."
+					[options]="options()"
+					(picked)="pick($event)"
+				/>
+			}
+		}
+	}
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of errors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<button type="button" class="btn-secondary" (click)="closed.emit()">Cerrar</button>
+	</div>
+</div>

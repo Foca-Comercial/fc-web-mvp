@@ -63,6 +63,21 @@ export interface ClientAdminRow {
 	routes_count: number;
 }
 
+// Precio especial de un cliente registrado (/clients/admin/{id}/special-prices): uno por producto
+export interface ClientSpecialPrice {
+	id_product: number;
+	product_code: string;
+	product_name: string;
+	product_active: boolean; // un producto inactivo no se ofrece en los pedidos
+	base_price: Money;
+	agreed_price: Money;
+}
+
+// PUT /clients/admin/{id}/special-prices/{id_product}: asigna o cambia el precio
+export interface ClientSpecialPriceSet {
+	agreed_price: MoneyInput; // ≥ 0, hasta 2 decimales
+}
+
 // ----- Product -----
 export interface ProductCreate {
 	code: string; // 3 dígitos

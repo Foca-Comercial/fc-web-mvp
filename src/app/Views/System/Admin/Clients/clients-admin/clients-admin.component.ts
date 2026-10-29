@@ -9,6 +9,8 @@
 // - Crear y editar en un modal (<app-client-form>).
 // - Desactivar / reactivar: PATCH { active }. Un cliente desactivado deja de aparecer al
 //   tomar pedidos y en las rutas; su historial se conserva. No hay borrado físico.
+// - Precios especiales del cliente en otro modal (<app-client-prices>); cada cambio
+//   recarga la tabla para refrescar su conteo.
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -26,6 +28,7 @@ import { SearchInputComponent } from '@components/Shared/search-input/search-inp
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
 import { ClientFormComponent } from '@components/System/Admin/client-form/client-form.component';
+import { ClientPricesComponent } from '@components/System/Admin/client-prices/client-prices.component';
 import { ClientAdminFilters, ClientAdminRow } from '@core/Models/CoreModule/catalog.model';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { AlertService } from '@core/Service/Alerts/alert.service';
@@ -51,6 +54,7 @@ import { PAGE_SIZE_OPTIONS } from '@core/Utils/order-board.utils';
 	selector: 'app-clients-admin',
 	imports: [
 		ClientFormComponent,
+		ClientPricesComponent,
 		DataTableComponent,
 		EmptyStateComponent,
 		FilterSelectComponent,
@@ -103,6 +107,11 @@ export class ClientsAdminComponent {
 	protected readonly editing = signal<ClientAdminRow | null>(null);
 	protected readonly formTitle = computed(() => (this.editing() ? 'Editar cliente' : 'Nuevo cliente'));
 
+	// ----- Precios especiales -----
+	protected readonly pricesOpen = signal(false);
+	protected readonly pricesClient = signal<ClientAdminRow | null>(null);
+	protected readonly pricesTitle = computed(() => `Precios especiales · ${this.pricesClient()?.name ?? ''}`);
+
 	protected readonly linksSummary = clientLinksSummary;
 
 	// ----- Filtros -----
@@ -138,6 +147,12 @@ export class ClientsAdminComponent {
 		this.formOpen.set(false);
 		this.alert.toast(created ? `Cliente ${client.name} creado` : 'Cambios guardados');
 		this.table.reload();
+	}
+
+	// ----- Precios especiales -----
+	protected openPrices(client: ClientAdminRow): void {
+		this.pricesClient.set(client);
+		this.pricesOpen.set(true);
 	}
 
 	// ----- Desactivar / reactivar -----

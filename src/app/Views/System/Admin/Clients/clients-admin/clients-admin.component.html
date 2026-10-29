@@ -86,6 +86,13 @@
 								<td>
 									<div class="flex items-center justify-center gap-2">
 										<button app-icon-button icon="pencil-square" [label]="'Editar ' + row.name" (click)="edit(row)"></button>
+										<button
+											app-icon-button
+											icon="tag"
+											tone="primary"
+											[label]="'Precios especiales de ' + row.name"
+											(click)="openPrices(row)"
+										></button>
 										@if (row.active) {
 											<button
 												app-icon-button
@@ -143,5 +150,12 @@
 <app-modal [title]="formTitle()" [(open)]="formOpen" maxWidth="max-w-2xl">
 	@if (formOpen()) {
 		<app-client-form [client]="editing()" [neighborhoods]="neighborhoods()" (saved)="onSaved($event)" (cancelled)="formOpen.set(false)" />
+	}
+</app-modal>
+
+<!-- Precios especiales -->
+<app-modal [title]="pricesTitle()" [(open)]="pricesOpen" maxWidth="max-w-3xl">
+	@if (pricesOpen() && pricesClient(); as client) {
+		<app-client-prices [client]="client" (changed)="table.reload()" (closed)="pricesOpen.set(false)" />
 	}
 </app-modal>
