@@ -1,0 +1,79 @@
+<form class="space-y-5" novalidate (submit)="$event.preventDefault(); submit()">
+	<div class="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+		<div>
+			<label for="route-name" class="form-label">Nombre</label>
+			<input
+				id="route-name"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxName"
+				[value]="draft().name"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().name ? 'true' : null"
+				(input)="patchDraft({ name: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().name; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="route-time" class="form-label">Hora de salida</label>
+			<input
+				id="route-time"
+				type="time"
+				class="form-input"
+				[value]="draft().time"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().time ? 'true' : null"
+				(input)="patchDraft({ time: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().time; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+	</div>
+
+	<fieldset>
+		<legend class="form-label">Días en que sale</legend>
+		<div class="flex flex-wrap gap-2" role="group" aria-label="Días en que sale la ruta">
+			@for (option of weekDays; track option.day) {
+				@let selected = draft().days.includes(option.day);
+				<button
+					type="button"
+					class="min-w-14 rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+					[class]="selected ? 'border-brand-700 bg-brand-700 text-white hover:bg-brand-800' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'"
+					[attr.aria-pressed]="selected"
+					[attr.aria-label]="option.long"
+					[disabled]="saving()"
+					(click)="toggle(option.day)"
+				>
+					{{ option.short }}
+				</button>
+			}
+		</div>
+		@if (submitted() && errors().days; as message) {
+			<p class="form-error">{{ message }}</p>
+		}
+	</fieldset>
+
+	<p class="text-xs text-slate-500">
+		La ruta aparece en «Rutas del día» los días elegidos. Un cambio aplica de inmediato; los pedidos ya generados no cambian.
+	</p>
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of serverErrors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+			<button type="submit" class="btn-primary" [disabled]="saving() || unchanged()" [title]="unchanged() ? 'No hay cambios para guardar' : ''">
+				{{ saving() ? 'Guardando…' : isEdit() ? 'Guardar cambios' : 'Crear ruta' }}
+			</button>
+		</div>
+	</div>
+</form>

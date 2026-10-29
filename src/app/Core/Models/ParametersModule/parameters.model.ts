@@ -54,6 +54,18 @@ export interface RouteCard extends Route {
 	zones: string[]; // zonas distintas de esos clientes, A-Z
 }
 
+// Panel de administración: GET /routes/admin (crear y editar usan POST /routes/ y
+// PATCH /routes/{id}; desactivar es PATCH { active: false })
+export interface RouteAdminFilters {
+	search: string; // nombre (contiene); '' = sin filtro
+	active: boolean | null; // null = activas e inactivas
+	day: number | null; // rutas que salen ese día (1 = lunes ... 7 = domingo)
+}
+
+export interface RouteAdminRow extends Route {
+	clients_count: number; // clientes activos asignados
+}
+
 // POST /routes/{id}/clients
 export interface RouteClientAssign {
 	id_client: number;
@@ -67,6 +79,8 @@ export interface RouteAvailableClient {
 	address: string | null;
 	neighborhood_name: string;
 	zone_name: string;
+	// Productos activos con precio especial: sin ellos no se le generan pedidos desde la ruta
+	special_prices_count: number;
 }
 
 // GET /routes/{id}/clients

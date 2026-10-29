@@ -1,0 +1,159 @@
+<div class="space-y-4">
+	<p class="text-sm text-slate-600">
+		Clientes de la ruta <strong class="text-slate-900">{{ route().name }}</strong>. Al generar los pedidos de la ruta, a cada
+		cliente activo se le ofrecen solo sus productos con precio especial.
+	</p>
+
+	<!-- Asignados -->
+	@if (clients() === undefined) {
+		<div class="space-y-2" aria-busy="true" aria-label="Cargando los clientes de la ruta">
+			<app-skeleton class="h-14 w-full rounded-xl" />
+			<app-skeleton class="h-14 w-full rounded-xl" />
+			<app-skeleton class="h-14 w-full rounded-xl" />
+		</div>
+	} @else if (clients() === null) {
+		<div class="rounded-xl border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-700">
+			No se pudieron cargar los clientes de la ruta.
+			<button type="button" class="ml-1 font-semibold underline" (click)="retry()">Reintentar</button>
+		</div>
+	} @else {
+		@if (clients()!.length === 0) {
+			<p class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center text-sm text-slate-500">
+				La ruta aún no tiene clientes. Agrégale clientes registrados para generar sus pedidos.
+			</p>
+		} @else {
+			<p class="text-xs font-semibold text-slate-500">{{ summary() }}</p>
+			<ul class="max-h-80 divide-y divide-slate-200 overflow-y-auto rounded-xl border border-slate-200" aria-label="Clientes asignados">
+				@for (client of clients(); track client.id_client) {
+					@let clientBusy = busy() === client.id_client;
+					<li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 sm:flex-nowrap" [class.bg-slate-50]="!client.active">
+						<div class="w-full min-w-0 sm:w-auto sm:flex-1">
+							<p class="truncate text-sm font-semibold" [class]="client.active ? 'text-slate-900' : 'text-slate-500'">{{ client.name }}</p>
+							<p class="truncate text-xs text-slate-500">
+								{{ client.neighborhood_name }} · {{ client.zone_name }}
+								@if (client.phone) {
+									· {{ client.phone }}
+								}
+							</p>
+							@if (!client.active || lacksPrices(client)) {
+								<div class="mt-1 flex flex-wrap gap-1.5">
+									@if (!client.active) {
+										<app-status-badge tone="neutral" hint="No aparece en la plantilla de la ruta mientras esté inactivo">Inactivo</app-status-badge>
+									} @else if (lacksPrices(client)) {
+										<app-status-badge tone="soon" hint="Sin productos activos con precio especial no se le puede generar pedido desde la ruta">
+											Sin precios especiales
+										</app-status-badge>
+									}
+								</div>
+							}
+						</div>
+
+						@if (confirmRemove() === client.id_client) {
+							<div class="flex items-center gap-2 text-sm" role="group" [attr.aria-label]="'Quitar a ' + client.name + ' de la ruta'">
+								<span class="font-semibold text-danger-700">¿Quitar de la ruta?</span>
+								<button
+									type="button"
+									class="inline-flex h-8 items-center whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+									[disabled]="clientBusy"
+									(click)="cancelRemove()"
+								>
+									No
+								</button>
+								<button
+									type="button"
+									class="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-danger-600 px-3 text-xs font-semibold text-white transition hover:bg-danger-700 disabled:cursor-not-allowed disabled:opacity-60"
+									[disabled]="clientBusy"
+									(click)="remove(client)"
+								>
+									{{ clientBusy ? 'Quitando…' : 'Sí, quitar' }}
+								</button>
+							</div>
+						} @else {
+							<button
+								app-icon-button
+								icon="trash"
+								tone="danger"
+								[label]="'Quitar a ' + client.name + ' de la ruta'"
+								[disabled]="busy() !== null"
+								(click)="askRemove(client)"
+							></button>
+						}
+					</li>
+				}
+			</ul>
+		}
+
+		<!-- Agregar clientes -->
+		@if (adding()) {
+			<div class="space-y-3 rounded-xl border border-brand-300 bg-brand-50 p-3">
+				<div class="flex items-center gap-2">
+					<app-search-input
+						class="min-w-0 flex-1"
+						placeholder="Buscar cliente registrado por nombre"
+						ariaLabel="Buscar cliente para agregar a la ruta"
+						[(value)]="query"
+					/>
+					<button
+						type="button"
+						class="inline-flex h-10 items-center whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+						(click)="stopAdd()"
+					>
+						Listo
+					</button>
+				</div>
+
+				@if (!searchable()) {
+					<p class="text-xs text-slate-500">Escribe al menos 2 letras.</p>
+				} @else if (available() === undefined) {
+					<div class="space-y-2" aria-busy="true" aria-label="Buscando clientes">
+						<app-skeleton class="h-11 w-full rounded-lg" />
+						<app-skeleton class="h-11 w-full rounded-lg" />
+					</div>
+				} @else if (available() === null) {
+					<p class="text-sm font-semibold text-danger-700">No se pudo buscar. Inténtalo de nuevo.</p>
+				} @else if (available()!.length === 0) {
+					<p class="text-sm text-slate-500">
+						{{ query() ? 'Ningún cliente registrado y activo coincide, o ya está en la ruta.' : 'Todos los clientes registrados y activos ya están en la ruta.' }}
+					</p>
+				} @else {
+					<ul class="max-h-64 divide-y divide-brand-100 overflow-y-auto rounded-lg border border-brand-200 bg-white" aria-label="Clientes disponibles">
+						@for (option of available(); track option.id_client) {
+							<li class="flex items-center gap-3 px-3 py-2">
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm font-semibold text-slate-900">{{ option.name }}</p>
+									<p class="truncate text-xs text-slate-500">
+										{{ option.neighborhood_name }} · {{ option.zone_name }}
+										@if (lacksPrices(option)) {
+											· <span class="font-semibold text-warning-700">sin precios especiales</span>
+										}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="inline-flex h-8 items-center whitespace-nowrap rounded-lg bg-brand-700 px-3 text-xs font-semibold text-white transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+									[disabled]="busy() !== null"
+									(click)="assign(option)"
+								>
+									{{ busy() === option.id_client ? 'Agregando…' : 'Agregar' }}
+								</button>
+							</li>
+						}
+					</ul>
+					<p class="text-xs text-slate-500">Se muestran hasta 20 resultados, por nombre. Escribe más para afinar la búsqueda.</p>
+				}
+			</div>
+		} @else {
+			<button type="button" class="btn-secondary w-full" [disabled]="busy() !== null" (click)="startAdd()">Agregar clientes</button>
+		}
+	}
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of errors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<button type="button" class="btn-secondary" (click)="closed.emit()">Cerrar</button>
+	</div>
+</div>

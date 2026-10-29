@@ -40,8 +40,7 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.ROUTES,
 		title: pageTitle('Rutas'),
-		component: ComingSoonComponent,
-		data: { title: 'Rutas' },
+		loadComponent: () => import('./Routes/routes-admin/routes-admin.component').then((m) => m.RoutesAdminComponent),
 	},
 	{
 		path: ADMIN_PATHS.ARCHIVE,
