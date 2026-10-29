@@ -8,7 +8,7 @@
 
 import { Routes } from '@angular/router';
 import { ComingSoonComponent } from '@components/Shared/coming-soon/coming-soon.component';
-import { roleGuard } from '@core/Guards/role.guard';
+import { roleGuard, roleMatchGuard } from '@core/Guards/role.guard';
 import { ROLES } from '@core/Constants/roles';
 import { SystemShellComponent } from './system-shell/system-shell.component';
 
@@ -51,12 +51,12 @@ export const SYSTEM_ROUTES: Routes = [
 				data: { roles: MANAGER, title: 'Cierre del día' },
 			},
 			{
-				// Sin roles declarados → solo ADMINISTRADOR (seguro por defecto)
+				// Panel de administración. Sin roles declarados → solo ADMINISTRADOR (seguro
+				// por defecto). canMatch en vez de canActivate: si no tiene el rol, el chunk
+				// del panel ni se descarga. Las subsecciones viven en Admin/admin.routes.ts.
 				path: 'administracion',
-				title: 'Administración · Foca Comercial',
-				component: ComingSoonComponent,
-				canActivate: [roleGuard],
-				data: { title: 'Administración' },
+				canMatch: [roleMatchGuard],
+				loadChildren: () => import('./Admin/admin.routes').then((m) => m.ADMIN_ROUTES),
 			},
 			{ path: '', pathMatch: 'full', redirectTo: 'pedidos' },
 		],

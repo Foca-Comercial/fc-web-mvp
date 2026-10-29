@@ -63,3 +63,19 @@ export interface ListQuery {
 	skip?: number;
 	limit?: number;
 }
+
+// ----- Listados paginados en el servidor (administración) -----
+// Espejo de Page[T] (app/schemas/common/page_schema.py). La API pagina, filtra y
+// ordena en SQL; el front solo pide la página. page_size: 1–200 (por defecto 25).
+export interface PageRequest {
+	page: number; // 1 = la primera
+	page_size: number;
+}
+
+export interface Page<T> {
+	page: number;
+	page_size: number;
+	total: number; // registros que cumplen el filtro
+	pages: number; // 0 si no hay registros
+	items: T[];
+}

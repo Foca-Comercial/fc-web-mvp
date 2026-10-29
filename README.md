@@ -51,7 +51,7 @@ src/app/
 ├── Core/
 │   ├── Constants/              # roles, rutas, endpoints, etiquetas y mensajes de validación
 │   ├── Directives/             # appNumericInput, appLogoutButton
-│   ├── Guards/                 # authGuard / authMatchGuard, roleGuard, guestGuard
+│   ├── Guards/                 # authGuard / authMatchGuard, roleGuard / roleMatchGuard, guestGuard
 │   ├── Interceptors/           # authInterceptor (Bearer + refresh automático)
 │   ├── Models/                 # Interfaces espejo de los schemas de la API
 │   │   ├── Api/                #   formatos de error
@@ -61,6 +61,7 @@ src/app/
 │   │   ├── ParametersModule/
 │   │   └── CoreModule/
 │   ├── Pipes/                  # bogotaDate, cop, apiTime, orderState, daysWeek
+│   ├── State/                  # Estado reutilizable con signals (ServerTable: tablas paginadas en la API)
 │   ├── Service/
 │   │   ├── generic.service.ts  # ReadOnlyService / GenericService (CRUD de la API)
 │   │   ├── Alerts/             # AlertService (SweetAlert2) y ApiAlertService (errores API)
@@ -75,7 +76,8 @@ src/app/
 │       ├── Orders/orders-board/    # Tablero de despachos (construido)
 │       ├── Routes/routes-board/    # Rutas del día y de la semana (construido)
 │       ├── Closure/closure-board/  # Cierre y reportes del día (construido)
-│       └── History/ Closure/ Admin/   # vistas por construir
+│       ├── Admin/admin.routes.ts   # Panel de administración: subsecciones (en construcción)
+│       └── History/                # vista por construir
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
 └── app.routes.ts
 ```
@@ -137,6 +139,44 @@ if (res.ok) this.reload();
 `data.roles` queda solo para `ADMINISTRADOR`. El menú (`NavigationService`) declara los
 mismos roles que su ruta.
 
+Para un módulo lazy con `loadChildren` se usa `roleMatchGuard` (`canMatch`) en la ruta
+padre: si el usuario no tiene el rol, el chunk ni siquiera se descarga y las rutas hijas
+no necesitan repetir el guard.
+
+### Panel de administración (`/administracion`, solo ADMINISTRADOR)
+El ADMINISTRADOR ve todas las vistas del GESTOR_COMERCIAL y, además, el panel de
+administración: un módulo aparte (`Views/System/Admin/admin.routes.ts`, cargado con
+`loadChildren` y protegido con `roleMatchGuard`), para que las vistas operativas —las de
+alto volumen— no carguen código ni peticiones de administración.
+
+- **Subsecciones** (`ADMIN_PATHS` en `app-routes.ts`): Clientes, Productos, Domiciliarios,
+  Vehículos, Rutas y Archivo mensual. `/administracion` redirige a Clientes.
+- **Menú:** «Configuración» es un grupo desplegable (`NavigationItem.children`) con una
+  entrada por subsección. Se abre solo al entrar a una de sus páginas
+  (`NavigationService.openGroup`) y el usuario puede abrirlo o cerrarlo.
+- Cada subsección nueva: su ruta en `admin.routes.ts` (con `loadComponent`), su entrada en
+  `children` del ítem `admin` de `NavigationService` y su constante en `ADMIN_PATHS`.
+
+### Listados paginados en el servidor (`ServerTable`)
+Los catálogos de administración crecen sin límite, así que **no** se traen completos para
+filtrar en el cliente (como el tablero, que trae solo un día): la API filtra, ordena y
+pagina en SQL y responde `Page<T>` (`{ page, page_size, total, pages, items }`).
+`ServerTable` (`Core/State/server-table.state.ts`) conecta eso a signals:
+
+```ts
+protected readonly table = new ServerTable({
+	load: (query) => this.clients.getAdminPage(query), // query = filtros + page + page_size
+	filters: { search: '', active: null as boolean | null },
+});
+```
+
+- Una sola petición en vuelo (`switchMap`): cambiar un filtro cancela la anterior.
+- Cambiar filtros o tamaño de página vuelve a la página 1; si la página pedida quedó más
+  allá del final (p. ej. tras eliminar), salta a la última.
+- `loading` (primera carga, esqueleto) vs. `refreshing` (recargas, sin parpadeo);
+  `failed` solo si nunca se cargó nada. Tras crear, editar o eliminar: `table.reload()`.
+- Se crea en un inicializador de campo del componente (necesita contexto de inyección).
+
 ### Fechas
 Todo "hoy" se calcula en hora de Bogotá con `todayBogota()` (`Core/Utils/date.utils.ts`),
 nunca con `new Date().toISOString()` (UTC).
@@ -157,7 +197,8 @@ Tailwind v4 se configura en `src/styles.css` (`@theme`): paleta de marca (`brand
 
 ## Vistas construidas
 
-Todas cuelgan de `system.routes.ts` con `loadComponent` y `roleGuard`. La lógica de buscar,
+Todas cuelgan de `system.routes.ts` con `loadComponent` y `roleGuard` (el panel de
+administración, con `loadChildren` y `roleMatchGuard`). La lógica de buscar,
 filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.ts` (reciben
 `now` o los datos, sin tocar el reloj ni la red) y los componentes solo las conectan a signals.
 

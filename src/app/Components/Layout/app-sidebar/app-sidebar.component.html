@@ -21,7 +21,51 @@
 			<ul class="flex flex-col gap-1">
 				@for (item of section.items; track item.id) {
 					<li>
-						@if (item.route; as route) {
+						@if (item.children; as children) {
+							<!-- Grupo desplegable (p. ej. Configuración): el botón abre y cierra sus enlaces -->
+							@let open = nav.openGroup() === item.id;
+							@let active = nav.isGroupActive(item);
+							<button
+								type="button"
+								class="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-brand-50 hover:text-brand-900"
+								[class]="active ? 'text-brand-900' : 'text-slate-700'"
+								[attr.aria-expanded]="open"
+								[attr.aria-controls]="'nav-group-' + item.id"
+								(click)="nav.toggleGroup(item.id)"
+							>
+								<app-icon [name]="item.icon" [class]="active ? 'text-brand-800' : 'text-slate-500 group-hover:text-brand-700'" />
+								<span class="flex-1">{{ item.label }}</span>
+								<app-icon
+									name="chevron-down"
+									size="size-4"
+									class="text-slate-400 transition-transform duration-200"
+									[class.rotate-180]="open"
+								/>
+							</button>
+
+							@if (open) {
+								<ul [id]="'nav-group-' + item.id" class="ml-5 mt-1 flex flex-col gap-0.5 border-l border-slate-200 pl-2">
+									@for (child of children; track child.id) {
+										<li>
+											<a
+												[routerLink]="child.route"
+												routerLinkActive="bg-brand-100 text-brand-900"
+												#childRla="routerLinkActive"
+												[attr.aria-current]="childRla.isActive ? 'page' : null"
+												class="group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-brand-50 hover:text-brand-900"
+											>
+												<app-icon
+													[name]="child.icon"
+													size="size-4"
+													[class]="childRla.isActive ? 'text-brand-800' : 'text-slate-400 group-hover:text-brand-700'"
+												/>
+												{{ child.label }}
+											</a>
+										</li>
+									}
+								</ul>
+							}
+						} @else if (item.route; as route) {
 							<a
 								[routerLink]="route"
 								routerLinkActive="bg-brand-100 text-brand-900 shadow-[inset_3px_0_0_var(--color-brand-700)]"
