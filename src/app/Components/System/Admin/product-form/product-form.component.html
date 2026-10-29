@@ -1,0 +1,104 @@
+<form class="space-y-5" novalidate (submit)="$event.preventDefault(); submit()">
+	<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+		<div>
+			<label for="product-code" class="form-label">Código</label>
+			<input
+				id="product-code"
+				type="text"
+				inputmode="numeric"
+				autocomplete="off"
+				appNumericInput
+				class="form-input tabular-nums"
+				placeholder="011"
+				[maxDigits]="codeDigits"
+				[value]="draft().code"
+				[disabled]="saving() || codeLocked()"
+				[attr.aria-invalid]="submitted() && errors().code ? 'true' : null"
+				[attr.aria-describedby]="codeLocked() ? 'product-code-hint' : null"
+				(input)="patchDraft({ code: $any($event.target).value })"
+			/>
+			@if (codeLocked()) {
+				<p id="product-code-hint" class="mt-1.5 text-xs text-slate-500">
+					Ya tiene pedidos: su código no se puede cambiar (lo usan el cierre, Siigo y el archivado).
+				</p>
+			} @else if (submitted() && errors().code; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="product-name" class="form-label">Nombre</label>
+			<input
+				id="product-name"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxName"
+				[value]="draft().name"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().name ? 'true' : null"
+				(input)="patchDraft({ name: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().name; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div class="sm:col-span-2">
+			<label for="product-description" class="form-label">Descripción (opcional)</label>
+			<input
+				id="product-description"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxDescription"
+				[value]="draft().description"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().description ? 'true' : null"
+				(input)="patchDraft({ description: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().description; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="product-price" class="form-label">Precio base ($)</label>
+			<input
+				id="product-price"
+				type="text"
+				inputmode="decimal"
+				autocomplete="off"
+				class="form-input tabular-nums"
+				placeholder="4500"
+				[value]="draft().priceText"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().priceText ? 'true' : null"
+				(input)="setPrice($any($event.target))"
+			/>
+			@if (submitted() && errors().priceText; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+	</div>
+
+	<p class="text-xs text-slate-500">
+		El precio base aplica a los pedidos que se tomen después; los ya tomados conservan su precio. Los clientes con precio
+		especial siguen con el suyo.
+	</p>
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of serverErrors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+			<button type="submit" class="btn-primary" [disabled]="saving() || unchanged()" [title]="unchanged() ? 'No hay cambios para guardar' : ''">
+				{{ saving() ? 'Guardando…' : isEdit() ? 'Guardar cambios' : 'Crear producto' }}
+			</button>
+		</div>
+	</div>
+</form>

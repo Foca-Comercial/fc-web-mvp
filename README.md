@@ -156,12 +156,15 @@ alto volumen— no carguen código ni peticiones de administración.
   (`NavigationService.openGroup`) y el usuario puede abrirlo o cerrarlo.
 - Cada subsección nueva: su ruta en `admin.routes.ts` (con `loadComponent`), su entrada en
   `children` del ítem `admin` de `NavigationService` y su constante en `ADMIN_PATHS`.
+- Lo compartido entre subsecciones (filtro de estado activo/inactivo y la traducción de los
+  `<select>` a filtros de la API) vive en `Core/Utils/admin-filters.utils.ts`.
 
 Subsecciones construidas:
 
 | Subsección | Ruta | Datos | Notas |
 |---|---|---|---|
 | Clientes | `/administracion/clientes` | `GET /clients/admin` (paginado en la API), `POST /clients/admin`, `PATCH /clients/admin/{id}` | Solo clientes **registrados** (los temporales los borra la purga). `ServerTable` con búsqueda por nombre o inicio del teléfono, filtro de zona (sale del selector de barrios, que se carga una sola vez para el filtro y el formulario) y de estado (activos por defecto). Crear y editar en un modal (`<app-client-form>`, mismas reglas que el cliente nuevo del pedido; al editar solo envía lo que cambió y sin cambios no deja guardar). Desactivar / reactivar con confirmación (`PATCH { active }`): el desactivado deja de aparecer al tomar pedidos y en las rutas; no hay borrado físico. Lógica pura en `admin-clients.utils`. **Precios especiales** (botón de etiqueta en cada fila → modal `<app-client-prices>`): `GET/PUT/DELETE /clients/admin/{id}/special-prices[/{id_product}]`. Lista por código con el precio base y la diferencia (−17 %, +5 %); el precio se edita en línea (Enter o Guardar, con Deshacer); agregar elige un producto activo del catálogo (`GET /products/catalog`) y entra con su precio base; quitar confirma en línea (vive en un `<dialog>`, sin SweetAlert). Cada cambio recarga la tabla para refrescar el conteo. Lógica pura en `client-prices.utils`. |
+| Productos | `/administracion/productos` | `GET /products/admin` (paginado en la API), `POST /products/admin`, `PATCH /products/admin/{id}` | `ServerTable` con búsqueda por inicio del código o nombre y filtro de estado (activos por defecto). Crear y editar en un modal (`<app-product-form>`): código de 3 dígitos (único), nombre, descripción opcional y precio base; si el producto ya tiene pedidos (`in_use`) el código queda bloqueado (lo usan el cierre, Siigo y el archivado). Desactivar / reactivar con confirmación: el desactivado deja de ofrecerse al tomar pedidos y en las rutas. Lógica pura en `admin-products.utils`. |
 
 ### Listados paginados en el servidor (`ServerTable`)
 Los catálogos de administración crecen sin límite, así que **no** se traen completos para

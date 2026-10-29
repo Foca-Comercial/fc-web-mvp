@@ -96,6 +96,26 @@ export interface Product {
 	active: boolean;
 }
 
+// ----- Panel de administración: productos (/products/admin) -----
+// Crear usa ProductCreate y editar ProductUpdate (PATCH parcial: solo lo que cambió;
+// { active: false } desactiva, { active: true } reactiva).
+export interface ProductAdminFilters {
+	search: string; // código (empieza por) o nombre (contiene); '' = sin filtro
+	active: boolean | null; // null = activos e inactivos
+}
+
+// Fila del listado; también es la respuesta de crear y editar
+export interface ProductAdminRow {
+	id_product: number;
+	code: string;
+	name: string;
+	description: string | null;
+	base_price: Money;
+	active: boolean;
+	special_prices_count: number; // clientes con precio pactado
+	in_use: boolean; // tiene pedidos: el código ya no se puede cambiar
+}
+
 // GET /products/catalog?id_client= : precio que aplica a cada producto
 export interface ProductCatalogItem {
 	id_product: number;

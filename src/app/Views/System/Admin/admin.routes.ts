@@ -24,8 +24,8 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.PRODUCTS,
 		title: pageTitle('Productos'),
-		component: ComingSoonComponent,
-		data: { title: 'Productos' },
+		loadComponent: () =>
+			import('./Products/products-admin/products-admin.component').then((m) => m.ProductsAdminComponent),
 	},
 	{
 		path: ADMIN_PATHS.DRIVERS,

@@ -8,39 +8,26 @@
 
 import { ClientAdminCreate, ClientAdminFilters, ClientAdminRow, ClientAdminUpdate } from '@core/Models/CoreModule/catalog.model';
 import { NeighborhoodDropdown } from '@core/Models/ParametersModule/parameters.model';
+import { Option, STATUS_FILTER_OPTIONS, idToOption, optionToId } from './admin-filters.utils';
 import { EMPTY_NEW_CLIENT, NewClientDraft, toNewClientInput } from './new-order.utils';
 import { normalizeText } from './text.utils';
 
 // ----- Filtros -----
-// Opción de <app-filter-select> (misma forma que su FilterOption)
-export interface Option {
-	value: string;
-	label: string;
-}
+// Estado y traducción de los <select>: compartidos con las demás subsecciones
+export { activeToOption, optionToActive } from './admin-filters.utils';
+export type { Option } from './admin-filters.utils';
 
 // Por defecto se ven los activos; los inactivos se buscan con el filtro de estado
 export const DEFAULT_CLIENT_FILTERS: ClientAdminFilters = { search: '', active: true, id_zone: null };
 
-export const CLIENT_STATUS_OPTIONS: readonly Option[] = [
-	{ value: 'true', label: 'Activos' },
-	{ value: 'false', label: 'Inactivos' },
-];
-
-// <app-filter-select> trabaja con texto: '' = todos
-export function activeToOption(active: boolean | null): string {
-	return active === null ? '' : String(active);
-}
-
-export function optionToActive(value: string): boolean | null {
-	return value === '' ? null : value === 'true';
-}
+export const CLIENT_STATUS_OPTIONS = STATUS_FILTER_OPTIONS;
 
 export function zoneToOption(idZone: number | null): string {
-	return idZone === null ? '' : String(idZone);
+	return idToOption(idZone);
 }
 
 export function optionToZone(value: string): number | null {
-	return value === '' ? null : Number(value);
+	return optionToId(value);
 }
 
 // Zonas (sin repetir, A-Z) a partir del selector de barrios, que ya trae su zona
