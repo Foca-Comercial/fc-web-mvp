@@ -1,0 +1,106 @@
+<form class="space-y-5" novalidate (submit)="$event.preventDefault(); submit()">
+	<div class="grid gap-4 sm:grid-cols-2">
+		<div class="sm:col-span-2">
+			<label for="client-name" class="form-label">Nombre</label>
+			<input
+				id="client-name"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxName"
+				[value]="draft().name"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().name ? 'true' : null"
+				(input)="patchDraft({ name: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().name; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="client-phone" class="form-label">Teléfono (opcional)</label>
+			<input
+				id="client-phone"
+				type="tel"
+				inputmode="numeric"
+				autocomplete="off"
+				appNumericInput
+				class="form-input"
+				placeholder="3001234567"
+				[maxDigits]="phoneDigits"
+				[value]="draft().phone"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().phone ? 'true' : null"
+				(input)="patchDraft({ phone: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().phone; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="client-neighborhood" class="form-label">Barrio</label>
+			<select
+				id="client-neighborhood"
+				class="form-input"
+				[disabled]="!choices() || saving()"
+				[attr.aria-invalid]="submitted() && errors().idNeighborhood ? 'true' : null"
+				(change)="setNeighborhood($any($event.target).value)"
+			>
+				<option value="" [selected]="draft().idNeighborhood === null">
+					{{ choices() === undefined ? 'Cargando barrios…' : 'Elige el barrio' }}
+				</option>
+				@for (neighborhood of choices(); track neighborhood.id_neighborhood) {
+					<option [value]="neighborhood.id_neighborhood" [selected]="draft().idNeighborhood === neighborhood.id_neighborhood">
+						{{ neighborhoodLabel(neighborhood) }}
+					</option>
+				}
+			</select>
+			@if (choices() === null) {
+				<p class="form-error">No se pudo cargar la lista de barrios. Cierra el formulario e inténtalo de nuevo.</p>
+			} @else if (submitted() && errors().idNeighborhood; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div class="sm:col-span-2">
+			<label for="client-address" class="form-label">Dirección (opcional)</label>
+			<input
+				id="client-address"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxAddress"
+				[value]="draft().address"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().address ? 'true' : null"
+				(input)="patchDraft({ address: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().address; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+	</div>
+
+	@if (!isEdit()) {
+		<p class="text-xs text-slate-500">
+			Queda como cliente registrado: aparece al tomar pedidos y se puede asignar a rutas y darle precios especiales.
+		</p>
+	}
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of serverErrors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+			<button type="submit" class="btn-primary" [disabled]="saving() || unchanged()" [title]="unchanged() ? 'No hay cambios para guardar' : ''">
+				{{ saving() ? 'Guardando…' : isEdit() ? 'Guardar cambios' : 'Crear cliente' }}
+			</button>
+		</div>
+	</div>
+</form>

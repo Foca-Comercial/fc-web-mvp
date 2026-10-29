@@ -28,6 +28,41 @@ export interface NewClientInput {
 	id_neighborhood: number;
 }
 
+// ----- Panel de administración: clientes REGISTRADOS (/clients/admin) -----
+// Los temporales (creados desde un pedido) no se gestionan aquí; los borra la purga.
+// El backend fija is_registered = true al crear.
+export interface ClientAdminCreate {
+	name: string; // máx. 200, se guarda en MAYÚSCULAS
+	phone?: string | null; // exactamente 10 dígitos
+	address?: string | null; // máx. 200
+	id_neighborhood: number; // barrio activo
+	active?: boolean;
+}
+// PATCH parcial: solo lo que cambió. { active: false } desactiva, { active: true } reactiva
+export type ClientAdminUpdate = Partial<ClientAdminCreate>;
+
+// Filtros de GET /clients/admin (se suman page y page_size)
+export interface ClientAdminFilters {
+	search: string; // nombre (contiene) o teléfono (empieza por); '' = sin filtro
+	active: boolean | null; // null = activos e inactivos
+	id_zone: number | null;
+}
+
+// Fila del listado; también es la respuesta de crear y editar
+export interface ClientAdminRow {
+	id_client: number;
+	name: string;
+	phone: string | null;
+	address: string | null;
+	id_neighborhood: number;
+	neighborhood_name: string;
+	id_zone: number;
+	zone_name: string;
+	active: boolean;
+	special_prices_count: number;
+	routes_count: number;
+}
+
 // ----- Product -----
 export interface ProductCreate {
 	code: string; // 3 dígitos

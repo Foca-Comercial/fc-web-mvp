@@ -18,8 +18,8 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.CLIENTS,
 		title: pageTitle('Clientes'),
-		component: ComingSoonComponent,
-		data: { title: 'Clientes' },
+		loadComponent: () =>
+			import('./Clients/clients-admin/clients-admin.component').then((m) => m.ClientsAdminComponent),
 	},
 	{
 		path: ADMIN_PATHS.PRODUCTS,

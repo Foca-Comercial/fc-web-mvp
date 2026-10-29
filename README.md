@@ -157,6 +157,12 @@ alto volumen— no carguen código ni peticiones de administración.
 - Cada subsección nueva: su ruta en `admin.routes.ts` (con `loadComponent`), su entrada en
   `children` del ítem `admin` de `NavigationService` y su constante en `ADMIN_PATHS`.
 
+Subsecciones construidas:
+
+| Subsección | Ruta | Datos | Notas |
+|---|---|---|---|
+| Clientes | `/administracion/clientes` | `GET /clients/admin` (paginado en la API), `POST /clients/admin`, `PATCH /clients/admin/{id}` | Solo clientes **registrados** (los temporales los borra la purga). `ServerTable` con búsqueda por nombre o inicio del teléfono, filtro de zona (sale del selector de barrios, que se carga una sola vez para el filtro y el formulario) y de estado (activos por defecto). Crear y editar en un modal (`<app-client-form>`, mismas reglas que el cliente nuevo del pedido; al editar solo envía lo que cambió y sin cambios no deja guardar). Desactivar / reactivar con confirmación (`PATCH { active }`): el desactivado deja de aparecer al tomar pedidos y en las rutas; no hay borrado físico. Lógica pura en `admin-clients.utils`. |
+
 ### Listados paginados en el servidor (`ServerTable`)
 Los catálogos de administración crecen sin límite, así que **no** se traen completos para
 filtrar en el cliente (como el tablero, que trae solo un día): la API filtra, ordena y
