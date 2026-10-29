@@ -47,7 +47,8 @@ src/app/
 │   │                           #   data-table, pagination, search-input, filter-select,
 │   │                           #   icon-button, status-badge, skeleton, empty-state,
 │   │                           #   item-picker, loader, 403, 404, coming-soon (provisional)
-│   └── System/<Vista>/         # Componentes propios de cada vista (cards, modales de detalle…)
+│   └── System/<Vista>/         # Componentes propios de cada vista (cards, modales de detalle…);
+│                               #   System/Admin/: formularios y modales del panel de administración
 ├── Core/
 │   ├── Constants/              # roles, rutas, endpoints, etiquetas y mensajes de validación
 │   ├── Directives/             # appNumericInput, appLogoutButton
@@ -69,15 +70,17 @@ src/app/
 │   │   ├── Navigation/         # menú lateral filtrado por rol
 │   │   └── <Módulo>/           # un servicio por entidad
 │   └── Utils/                  # errores de API, fechas Bogotá, dinero, texto, query params,
-│                               #   descargas y la lógica pura de cada vista (*-board.utils)
+│                               #   descargas y la lógica pura de cada vista (*-board.utils,
+│                               #   admin-*.utils del panel)
 ├── Views/                      # Páginas (las que aparecen en el ruteo)
 │   ├── Auth/login/
 │   └── System/                 # system-shell (layout) + system.routes.ts
 │       ├── Orders/orders-board/    # Tablero de despachos (construido)
 │       ├── Routes/routes-board/    # Rutas del día y de la semana (construido)
 │       ├── Closure/closure-board/  # Cierre y reportes del día (construido)
-│       ├── Admin/admin.routes.ts   # Panel de administración: subsecciones (en construcción)
-│       └── History/                # vista por construir
+│       ├── Admin/                  # Panel de administración (admin.routes.ts + una carpeta por
+│       │                           #   subsección: Clients, Products, Drivers, Vehicles, Routes, Archive)
+│       └── History/                # vista por construir (ComingSoon mientras tanto)
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
 └── app.routes.ts
 ```
