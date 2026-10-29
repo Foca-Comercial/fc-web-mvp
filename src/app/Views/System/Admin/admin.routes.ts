@@ -30,8 +30,7 @@ export const ADMIN_ROUTES: Routes = [
 	{
 		path: ADMIN_PATHS.DRIVERS,
 		title: pageTitle('Domiciliarios'),
-		component: ComingSoonComponent,
-		data: { title: 'Domiciliarios' },
+		loadComponent: () => import('./Drivers/drivers-admin/drivers-admin.component').then((m) => m.DriversAdminComponent),
 	},
 	{
 		path: ADMIN_PATHS.VEHICLES,

@@ -140,11 +140,13 @@ export interface SpecialCustomerPrice {
 	agreed_price: Money;
 }
 
-// ----- UserVehicle (vendedor / conductor) -----
+// ----- UserVehicle: asignación domiciliario + vehículo (vendedor en Siigo) -----
+// El código es de la asignación, no de la persona: un domiciliario tiene uno por vehículo.
 export interface UserVehicleCreate {
 	code: string; // 2 dígitos: Siigo lo recibe como número ("01" → 1)
 	id_user_role: number;
 	id_vehicle: number;
+	active?: boolean; // inactiva = retirada: no se ofrece al asignar pedidos
 }
 export type UserVehicleUpdate = Partial<UserVehicleCreate>;
 export interface UserVehicle extends UserVehicleCreate {

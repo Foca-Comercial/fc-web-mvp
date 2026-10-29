@@ -1,0 +1,175 @@
+<section class="space-y-4">
+	<!-- Encabezado, búsqueda, filtros y acciones -->
+	<div class="space-y-4 rounded-2xl bg-white p-4 shadow-card">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<div>
+				<h1 class="text-xl font-bold text-brand-950">Domiciliarios</h1>
+				<p class="text-sm text-slate-500">
+					Domiciliarios y sus vehículos con código de vendedor.
+					@if (!table.loading()) {
+						<span class="font-semibold text-slate-700">{{ table.total() }} {{ table.total() === 1 ? 'resultado' : 'resultados' }}</span>
+					}
+				</p>
+			</div>
+			<div class="flex w-full items-center gap-2 sm:w-auto">
+				<button
+					app-icon-button
+					icon="arrow-path"
+					label="Actualizar listado"
+					[disabled]="table.busy()"
+					(click)="table.reload()"
+				></button>
+				<button type="button" class="btn-primary flex-1 whitespace-nowrap sm:flex-none" (click)="newDriver()">
+					<app-icon name="plus" size="size-4" />
+					Nuevo domiciliario
+				</button>
+			</div>
+		</div>
+
+		<div class="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+			<app-search-input
+				placeholder="Buscar por nombre o código"
+				ariaLabel="Buscar domiciliarios por nombre o código"
+				[value]="table.filters().search"
+				(valueChange)="setSearch($event)"
+			/>
+			<app-filter-select label="Estado" allLabel="Todos" [options]="statusOptions" [value]="statusValue()" (valueChange)="setStatus($event)" />
+		</div>
+	</div>
+
+	<!-- Tabla -->
+	<div class="rounded-2xl bg-white shadow-card">
+		<app-data-table>
+			<table>
+				<caption class="sr-only">
+					Domiciliarios
+				</caption>
+				<thead>
+					<tr>
+						<th scope="col">N°</th>
+						<th scope="col">DOMICILIARIO</th>
+						<th scope="col">TELÉFONO</th>
+						<th scope="col">CÓDIGOS</th>
+						<th scope="col">ESTADO</th>
+						<th scope="col">ACCIONES</th>
+					</tr>
+				</thead>
+
+				@if (table.loading()) {
+					<tbody app-table-skeleton [rows]="8" [columns]="columnCount"></tbody>
+				} @else {
+					<tbody [class.opacity-60]="table.refreshing()" [attr.aria-busy]="table.refreshing()">
+						@for (row of table.items(); track row.id_user; let i = $index) {
+							<tr>
+								<td class="font-bold tabular-nums text-slate-500">{{ (table.firstRowNumber() + i).toString().padStart(3, '0') }}</td>
+								<td>
+									<span class="block font-bold text-slate-900">{{ fullName(row) }}</span>
+									<span class="block text-xs text-slate-500">{{ row.username }}</span>
+								</td>
+								<td class="tabular-nums">{{ row.phone ?? '—' }}</td>
+								<td>
+									@if (row.codes.length > 0) {
+										<div class="flex flex-wrap justify-center gap-1">
+											@for (code of row.codes; track code) {
+												<span class="rounded-md bg-brand-100 px-1.5 py-0.5 text-xs font-bold tabular-nums text-brand-900">{{ code }}</span>
+											}
+										</div>
+									} @else {
+										<span class="text-xs text-warning-700" title="Sin vehículos activos no se le pueden asignar pedidos">Sin vehículos</span>
+									}
+								</td>
+								<td>
+									<div class="flex flex-wrap justify-center gap-1">
+										@if (row.active) {
+											<app-status-badge tone="done">Activo</app-status-badge>
+										} @else {
+											<app-status-badge tone="neutral">Inactivo</app-status-badge>
+										}
+										@if (row.protected) {
+											<app-status-badge
+												tone="pending"
+												hint="Tiene otro rol (p. ej. administrador) o es el vendedor por defecto del cierre: no se desactiva desde aquí"
+											>
+												Protegido
+											</app-status-badge>
+										}
+									</div>
+								</td>
+								<td>
+									<div class="flex items-center justify-center gap-2">
+										<button app-icon-button icon="pencil-square" [label]="'Editar ' + fullName(row)" (click)="edit(row)"></button>
+										<button
+											app-icon-button
+											icon="truck"
+											tone="primary"
+											[label]="'Vehículos y códigos de ' + fullName(row)"
+											(click)="openAssignments(row)"
+										></button>
+										@if (!row.protected) {
+											@if (row.active) {
+												<button
+													app-icon-button
+													icon="no-symbol"
+													tone="warning"
+													[label]="'Desactivar ' + fullName(row)"
+													(click)="setActive(row, false)"
+												></button>
+											} @else {
+												<button
+													app-icon-button
+													icon="arrow-uturn-left"
+													tone="success"
+													[label]="'Reactivar ' + fullName(row)"
+													(click)="setActive(row, true)"
+												></button>
+											}
+										}
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				}
+			</table>
+		</app-data-table>
+
+		@if (!table.loading()) {
+			@if (table.failed()) {
+				<app-empty-state icon="exclamation-triangle" title="No se pudieron cargar los domiciliarios" description="Revisa tu conexión e inténtalo de nuevo.">
+					<button type="button" class="btn-primary" (click)="table.reload()">Reintentar</button>
+				</app-empty-state>
+			} @else if (table.total() === 0) {
+				@if (filtered()) {
+					<app-empty-state icon="magnifying-glass" title="Ningún domiciliario coincide con los filtros" description="Prueba con otro nombre, código o estado.">
+						<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+					</app-empty-state>
+				} @else {
+					<app-empty-state icon="user-group" title="Aún no hay domiciliarios" description="Crea un domiciliario y agrégale sus vehículos con un código para cada uno.">
+						<button type="button" class="btn-primary" (click)="newDriver()">Nuevo domiciliario</button>
+					</app-empty-state>
+				}
+			}
+		}
+
+		<div class="px-4 pb-2 sm:px-6">
+			<div class="flex flex-wrap items-center justify-end gap-x-3 pt-3">
+				<app-page-size-select [options]="pageSizeOptions" [(size)]="table.pageSize" />
+			</div>
+			<app-pagination [totalPages]="table.pages()" [(page)]="table.page" />
+		</div>
+	</div>
+</section>
+
+<!-- Crear / editar -->
+<app-modal [title]="formTitle()" [(open)]="formOpen" maxWidth="max-w-2xl">
+	@if (formOpen()) {
+		<app-driver-form [driver]="editing()" (saved)="onSaved($event)" (cancelled)="formOpen.set(false)" />
+	}
+</app-modal>
+
+<!-- Vehículos y códigos (asignaciones) -->
+<app-modal [title]="assignmentsTitle()" [(open)]="assignmentsOpen" maxWidth="max-w-3xl">
+	@if (assignmentsOpen() && assignmentsDriver(); as driver) {
+		<app-driver-assignments [driver]="driver" (changed)="table.reload()" (closed)="assignmentsOpen.set(false)" />
+	}
+</app-modal>

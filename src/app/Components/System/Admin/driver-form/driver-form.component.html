@@ -1,0 +1,103 @@
+<form class="space-y-5" novalidate (submit)="$event.preventDefault(); submit()">
+	<div class="grid gap-4 sm:grid-cols-2">
+		<div>
+			<label for="driver-name" class="form-label">Nombre</label>
+			<input
+				id="driver-name"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxName"
+				[value]="draft().name"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().name ? 'true' : null"
+				(input)="patchDraft({ name: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().name; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="driver-last-name" class="form-label">Apellido</label>
+			<input
+				id="driver-last-name"
+				type="text"
+				autocomplete="off"
+				class="form-input uppercase"
+				[maxLength]="maxName"
+				[value]="draft().lastName"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().lastName ? 'true' : null"
+				(input)="patchDraft({ lastName: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().lastName; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="driver-phone" class="form-label">Teléfono (opcional)</label>
+			<input
+				id="driver-phone"
+				type="tel"
+				inputmode="numeric"
+				autocomplete="off"
+				appNumericInput
+				class="form-input"
+				placeholder="3001234567"
+				[maxDigits]="phoneDigits"
+				[value]="draft().phone"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().phone ? 'true' : null"
+				(input)="patchDraft({ phone: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().phone; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+
+		<div>
+			<label for="driver-email" class="form-label">Correo (opcional)</label>
+			<input
+				id="driver-email"
+				type="email"
+				autocomplete="off"
+				class="form-input"
+				[value]="draft().email"
+				[disabled]="saving()"
+				[attr.aria-invalid]="submitted() && errors().email ? 'true' : null"
+				(input)="patchDraft({ email: $any($event.target).value })"
+			/>
+			@if (submitted() && errors().email; as message) {
+				<p class="form-error">{{ message }}</p>
+			}
+		</div>
+	</div>
+
+	@if (isEdit()) {
+		<p class="text-xs text-slate-500">
+			Usuario: <strong class="text-slate-700">{{ driver()?.username }}</strong> (no cambia al editar el nombre).
+		</p>
+	} @else {
+		<p class="text-xs text-slate-500">
+			Se crea su usuario (nombre.apellido) con la contraseña inicial y el rol de vendedor. Después agrégale sus vehículos
+			con un código para cada uno.
+		</p>
+	}
+
+	<!-- Pie -->
+	<div class="flex flex-wrap items-start justify-between gap-3 border-t border-slate-200 pt-4">
+		<div class="min-h-5 text-sm font-semibold text-danger-700" role="alert">
+			@for (message of serverErrors(); track $index) {
+				<p>{{ message }}</p>
+			}
+		</div>
+		<div class="flex gap-3">
+			<button type="button" class="btn-secondary" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+			<button type="submit" class="btn-primary" [disabled]="saving() || unchanged()" [title]="unchanged() ? 'No hay cambios para guardar' : ''">
+				{{ saving() ? 'Guardando…' : isEdit() ? 'Guardar cambios' : 'Crear domiciliario' }}
+			</button>
+		</div>
+	</div>
+</form>

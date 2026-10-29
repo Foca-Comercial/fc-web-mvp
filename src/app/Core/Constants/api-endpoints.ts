@@ -39,6 +39,7 @@ export const API_ENDPOINTS = {
 	shiftClosures: `${API}/shifts_closures`,
 	clientRoutes: `${API}/client_routes`,
 	archive: `${API}/archive`,
+	drivers: `${API}/drivers`,
 } as const;
 
 // Endpoints de auth que nunca llevan Bearer ni disparan el refresh automático
