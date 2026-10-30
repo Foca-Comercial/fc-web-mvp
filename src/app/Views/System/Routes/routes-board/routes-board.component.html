@@ -49,7 +49,7 @@
 						/>
 					}
 				} @else {
-					<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6">
+					<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-4">
 						@for (card of visibleDayCards(); track card.route.id_route) {
 							<app-route-card [card]="card" (viewDetails)="openDetail(card)" (addToMain)="addToMain(card)" />
 						}
@@ -93,7 +93,7 @@
 								@if (day.cards.length > 0) {
 									<div [class]="singleDay() ? 'grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2' : 'flex flex-col gap-2'">
 										@for (card of day.cards; track card.route.id_route) {
-											<app-route-week-card [card]="card" />
+											<app-route-week-card [card]="card" (viewDetails)="openDetail(card)" />
 										}
 									</div>
 								} @else {
@@ -120,22 +120,22 @@
 
 <!-- ===== Plantillas compartidas por las dos pestañas ===== -->
 <ng-template #skeleton>
-	<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,25rem),1fr))] gap-6" aria-busy="true" aria-label="Cargando rutas">
+	<div class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-4" aria-busy="true" aria-label="Cargando rutas">
 		@for (item of skeletonCards; track item) {
-			<div class="flex min-h-80 flex-col gap-3 rounded-2xl bg-white px-5 py-3">
-				<div class="flex h-15 items-center gap-2.5">
-					<app-skeleton class="size-12 rounded-full" />
-					<app-skeleton class="h-4 w-40 rounded-md" />
+			<div class="flex flex-col gap-3 rounded-2xl bg-white p-4">
+				<div class="flex items-center gap-2">
+					<app-skeleton class="size-10 rounded-full" />
+					<app-skeleton class="h-4 w-32 rounded-md" />
 				</div>
-				<div class="grid grid-cols-2 gap-5">
-					<app-skeleton class="h-20 rounded-2xl" />
-					<app-skeleton class="h-20 rounded-2xl" />
+				<div class="grid grid-cols-2 gap-3">
+					<app-skeleton class="h-16 rounded-xl" />
+					<app-skeleton class="h-16 rounded-xl" />
 				</div>
 				<app-skeleton class="h-4 w-full rounded-md" />
 				<app-skeleton class="h-4 w-2/3 rounded-md" />
-				<div class="mt-auto grid grid-cols-2 gap-5">
-					<app-skeleton class="h-11 rounded-2xl" />
-					<app-skeleton class="h-11 rounded-2xl" />
+				<div class="grid grid-cols-2 gap-3">
+					<app-skeleton class="h-9 rounded-xl" />
+					<app-skeleton class="h-9 rounded-xl" />
 				</div>
 			</div>
 		}

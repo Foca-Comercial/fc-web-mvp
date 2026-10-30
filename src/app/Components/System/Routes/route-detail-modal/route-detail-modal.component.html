@@ -1,6 +1,6 @@
 <app-modal [title]="title()" [open]="card() !== null" (openChange)="onOpenChange($event)" maxWidth="max-w-3xl">
 	@if (card(); as card) {
-		<dl class="grid gap-x-8 gap-y-4 sm:grid-cols-3">
+		<dl class="grid gap-x-8 gap-y-4" [class]="dayCard() ? 'sm:grid-cols-3' : 'sm:grid-cols-2'">
 			<div>
 				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Días de salida</dt>
 				<dd class="mt-0.5 text-slate-800">{{ card.route.days_week | daysWeek: 'long' }}</dd>
@@ -9,15 +9,17 @@
 				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Hora de salida</dt>
 				<dd class="mt-0.5 text-slate-800">{{ departure() }}</dd>
 			</div>
-			<div>
-				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Pedidos de hoy</dt>
-				<dd class="mt-0.5 text-slate-800">
-					{{ statusLabel() }}
-					@if (card.route.orders_count > 0) {
-						<span class="text-slate-500">({{ card.route.orders_count }} {{ card.route.orders_count === 1 ? 'pedido' : 'pedidos' }})</span>
-					}
-				</dd>
-			</div>
+			@if (dayCard(); as day) {
+				<div>
+					<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Pedidos de hoy</dt>
+					<dd class="mt-0.5 text-slate-800">
+						{{ statusLabel() }}
+						@if (day.route.orders_count > 0) {
+							<span class="text-slate-500">({{ day.route.orders_count }} {{ day.route.orders_count === 1 ? 'pedido' : 'pedidos' }})</span>
+						}
+					</dd>
+				</div>
+			}
 		</dl>
 
 		@let state = clients();

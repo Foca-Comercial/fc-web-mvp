@@ -40,6 +40,7 @@ import {
 	filterRoutes,
 	groupRoutesByDay,
 	markRouteAdded,
+	RouteCardInfo,
 	RouteDayCard,
 	RouteFilters,
 	routeStatusOptions,
@@ -94,7 +95,7 @@ export class RoutesBoardComponent {
 	protected readonly zone = signal('');
 	protected readonly status = signal(''); // solo aplica a Rutas del día
 	protected readonly day = signal(''); // solo aplica a Rutas de la semana: '1' (lunes) … '7' (domingo)
-	protected readonly selected = signal<RouteDayCard | null>(null); // modal de detalle
+	protected readonly selected = signal<RouteCardInfo | null>(null); // modal de detalle (día o semana)
 	protected readonly ordersCard = signal<RouteDayCard | null>(null); // modal "Vista principal"
 
 	private readonly filters = computed<RouteFilters>(() => ({
@@ -178,7 +179,7 @@ export class RoutesBoardComponent {
 		this.day.set('');
 	}
 
-	protected openDetail(card: RouteDayCard): void {
+	protected openDetail(card: RouteCardInfo): void {
 		this.selected.set(card);
 	}
 

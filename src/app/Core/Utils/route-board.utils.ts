@@ -41,6 +41,11 @@ export interface RouteDayCard extends RouteCardInfo<RouteOfDay> {
 
 export type RouteWeekCard = RouteCardInfo<RouteCard>;
 
+// ¿Es una card de Rutas del día? (las de la semana no tienen estado ni pedidos de hoy)
+export function isDayCard(card: RouteCardInfo): card is RouteDayCard {
+	return card.status !== null;
+}
+
 export interface RouteFilters {
 	search: string;
 	zone: string; // nombre de la zona; '' = todas

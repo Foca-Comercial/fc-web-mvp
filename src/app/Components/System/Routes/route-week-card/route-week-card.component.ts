@@ -1,13 +1,13 @@
 // ==================================================
 // Componente: <app-route-week-card>
 // ==================================================
-// Card compacta y solo informativa de una ruta en el tablero de la semana (una columna
-// por día): nombre, hora de salida, N.° de clientes, clientes que contiene y los días en
-// que sale. Sin estado ni acciones: esas viven en la pestaña Rutas del día.
+// Card compacta de una ruta en el tablero de la semana (una columna por día): nombre, hora
+// de salida, N.° de clientes, clientes que contiene, los días en que sale y "Ver detalles".
+// Sin estado ni pedidos: eso vive en la pestaña Rutas del día.
 //
-//   <app-route-week-card [card]="card" />
+//   <app-route-week-card [card]="card" (viewDetails)="openDetail(card)" />
 
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 import { IconComponent } from '@components/Shared/icon/icon.component';
 import { DaysWeekPipe } from '@core/Pipes/days-week.pipe';
@@ -17,7 +17,7 @@ import { formatDepartureTime, RouteWeekCard } from '@core/Utils/route-board.util
 	selector: 'app-route-week-card',
 	imports: [IconComponent, DaysWeekPipe],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	host: { class: 'block min-w-0 rounded-xl bg-white p-3 shadow-card' },
+	host: { class: 'flex min-w-0 flex-col rounded-xl bg-white p-3 shadow-card' },
 	template: `
 		<div class="flex items-start gap-2">
 			<span class="grid size-8 shrink-0 place-items-center rounded-full bg-brand-900">
@@ -52,10 +52,21 @@ import { formatDepartureTime, RouteWeekCard } from '@core/Utils/route-board.util
 		<p class="mt-2 w-fit max-w-full truncate rounded-md bg-brand-100 px-1.5 py-0.5 text-xs font-medium text-brand-900" title="Días en que sale">
 			{{ card().route.days_week | daysWeek }}
 		</p>
+
+		<button
+			type="button"
+			class="mt-2.5 flex items-center justify-center gap-1 rounded-lg bg-slate-200 px-2 py-1.5 text-xs font-semibold text-slate-800 transition hover:bg-slate-300"
+			[attr.aria-label]="'Ver detalles de la ruta ' + card().route.name"
+			(click)="viewDetails.emit()"
+		>
+			<app-icon name="eye" size="size-4" />
+			Ver detalles
+		</button>
 	`,
 })
 export class RouteWeekCardComponent {
 	readonly card = input.required<RouteWeekCard>();
+	readonly viewDetails = output<void>();
 
 	protected readonly departure = computed(() => formatDepartureTime(this.card().route.departure_time));
 	protected readonly clientsText = computed(() => {

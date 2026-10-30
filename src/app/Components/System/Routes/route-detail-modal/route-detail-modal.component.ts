@@ -1,8 +1,8 @@
 // ==================================================
 // Componente: <app-route-detail-modal>
 // ==================================================
-// Modal de solo lectura con el detalle de una ruta del día: días en que sale, hora de
-// salida, estado y la lista de sus clientes. Lo de la card ya está cargado; los clientes
+// Modal de solo lectura con el detalle de una ruta: días en que sale, hora de salida, la
+// lista de sus clientes y, si es una ruta del día, el estado de sus pedidos de hoy. Lo de la card ya está cargado; los clientes
 // (teléfono, dirección, barrio…) se piden al abrirse (GET /routes/{id}/clients), así la
 // vista no los pide de todas las rutas. Se abre cuando `card` trae una ruta y avisa con
 // `(closed)`.
@@ -20,7 +20,7 @@ import { RouteClient } from '@core/Models/ParametersModule/parameters.model';
 import { DaysWeekPipe } from '@core/Pipes/days-week.pipe';
 import { RouteService } from '@core/Service/ParametersModule/route.service';
 import { parseApiError } from '@core/Utils/api-error.utils';
-import { formatDepartureTime, ROUTE_STATUS_LABELS, RouteDayCard } from '@core/Utils/route-board.utils';
+import { formatDepartureTime, isDayCard, ROUTE_STATUS_LABELS, RouteCardInfo } from '@core/Utils/route-board.utils';
 
 type ClientsState =
 	| { status: 'idle' }
@@ -40,7 +40,8 @@ const LOADING: ClientsState = { status: 'loading' };
 export class RouteDetailModalComponent {
 	private readonly routes = inject(RouteService);
 
-	readonly card = input<RouteDayCard | null>(null);
+	// Card de Rutas del día o de Rutas de la semana
+	readonly card = input<RouteCardInfo | null>(null);
 	readonly closed = output<void>();
 
 	// Sube para volver a pedir los clientes (botón "Reintentar")
@@ -66,8 +67,13 @@ export class RouteDetailModalComponent {
 
 	protected readonly title = computed(() => this.card()?.route.name ?? 'Detalle de la ruta');
 	protected readonly departure = computed(() => formatDepartureTime(this.card()?.route.departure_time));
-	protected readonly statusLabel = computed(() => {
+	// Solo las rutas del día tienen estado y pedidos de hoy
+	protected readonly dayCard = computed(() => {
 		const card = this.card();
+		return card && isDayCard(card) ? card : null;
+	});
+	protected readonly statusLabel = computed(() => {
+		const card = this.dayCard();
 		return card ? ROUTE_STATUS_LABELS[card.status] : '';
 	});
 
