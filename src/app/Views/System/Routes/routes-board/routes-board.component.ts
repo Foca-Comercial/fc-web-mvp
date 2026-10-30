@@ -46,6 +46,7 @@ import {
 	routeStatusOptions,
 	RouteWeekCard,
 	routeZoneOptions,
+	sortDayCards,
 	weekDayOptions,
 } from '@core/Utils/route-board.utils';
 
@@ -112,7 +113,8 @@ export class RoutesBoardComponent {
 		() => Object.values(this.filters()).some(Boolean) || (this.tab() === 'week' && this.day() !== '')
 	);
 
-	protected readonly visibleDayCards = computed(() => filterRoutes(this.dayCards(), this.filters()));
+	// Las ya agregadas quedan al final: lo pendiente siempre está primero
+	protected readonly visibleDayCards = computed(() => sortDayCards(filterRoutes(this.dayCards(), this.filters())));
 	protected readonly weekDays = computed(() => groupRoutesByDay(filterRoutes(this.weekCards(), this.filters()), this.day()));
 	protected readonly weekHasResults = computed(() => this.weekDays().some((day) => day.cards.length > 0));
 	protected readonly singleDay = computed(() => this.day() !== '');

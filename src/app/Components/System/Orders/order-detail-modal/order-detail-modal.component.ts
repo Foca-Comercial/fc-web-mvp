@@ -7,15 +7,27 @@
 //   - PENDING / DISPATCHED: asignar, cambiar o quitar el domiciliario (PATCH /orders/{id}).
 //   - DISPATCHED / DELIVERED: reimprimir el comprobante de despacho (CD).
 //   - DELIVERED / CANCELLED: solo lectura (la API rechaza cambios en estados finales).
+// Con `readonly` no muestra ninguna acción, sea cual sea el estado (p. ej. el histórico).
 // Se abre cuando `orderId` trae un número. Avisa con `(closed)` para que quien lo usa
 // vuelva a dejarlo en null, y con `(changed)` cuando guardó un cambio, para que refresque.
 //
 //   <app-order-detail-modal [orderId]="selectedId()" (closed)="selectedId.set(null)" (changed)="reload()" />
+//   <app-order-detail-modal readonly [orderId]="selectedId()" (closed)="selectedId.set(null)" />
 //
 // Los avisos van EN LÍNEA y no con SweetAlert: un <dialog> modal deja inerte todo lo que
 // no está dentro de él, y una alerta encima quedaría sin poder cerrarse.
 
-import { ChangeDetectionStrategy, Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import {
+	booleanAttribute,
+	ChangeDetectionStrategy,
+	Component,
+	computed,
+	inject,
+	input,
+	linkedSignal,
+	output,
+	signal,
+} from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import {
 	Observable,
@@ -45,7 +57,7 @@ import { OrderService } from '@core/Service/CoreModule/order.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { parseApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
 import { todayBogota } from '@core/Utils/date.utils';
-import { orderCapabilities } from '@core/Utils/order-actions.utils';
+import { orderCapabilities, READ_ONLY_CAPABILITIES } from '@core/Utils/order-actions.utils';
 import { isScheduled } from '@core/Utils/schedule.utils';
 
 type DetailState =
@@ -86,6 +98,8 @@ export class OrderDetailModalComponent {
 	private readonly receipt = inject(OrderReceiptService);
 
 	readonly orderId = input<number | null>(null);
+	// Solo consulta: sin editar, sin cambiar el domiciliario y sin reimprimir el CD
+	readonly readonly = input(false, { transform: booleanAttribute });
 	readonly closed = output<void>();
 	readonly changed = output<void>();
 
@@ -111,9 +125,10 @@ export class OrderDetailModalComponent {
 	);
 
 	// Domiciliarios para el selector. undefined = cargando, null = no se pudo cargar. Se pide
-	// al abrir el modal; si falla, el detalle sigue siendo útil (solo no se puede cambiar).
+	// al abrir el modal (no en solo consulta, que no tiene selector); si falla, el detalle
+	// sigue siendo útil (solo no se puede cambiar).
 	protected readonly drivers = toSignal<DriverVehicleDropdown[] | null | undefined>(
-		toObservable(computed(() => this.orderId() !== null)).pipe(
+		toObservable(computed(() => this.orderId() !== null && !this.readonly())).pipe(
 			distinctUntilChanged(),
 			filter(Boolean),
 			switchMap(() =>
@@ -132,7 +147,9 @@ export class OrderDetailModalComponent {
 	});
 	protected readonly capabilities = computed(() => {
 		const order = this.order();
-		return order ? orderCapabilities(order.state, isScheduled(order.delivery_date, todayBogota())) : null;
+		if (!order) return null;
+		if (this.readonly()) return READ_ONLY_CAPABILITIES;
+		return orderCapabilities(order.state, isScheduled(order.delivery_date, todayBogota()));
 	});
 
 	// ----- Domiciliario -----

@@ -1,0 +1,172 @@
+<section class="space-y-2">
+	<h1 class="sr-only">Histórico de pedidos</h1>
+
+	<!-- Búsqueda y filtros -->
+	<div class="rounded-2xl bg-white p-4 shadow-card">
+		<div class="flex flex-wrap items-center gap-3">
+			<app-search-input
+				class="w-full sm:w-87"
+				placeholder="Buscar N° pedido o cliente"
+				[value]="table.filters().search"
+				(valueChange)="setSearch($event)"
+			/>
+			<app-filter-select
+				class="w-full sm:w-66"
+				label="Estado"
+				allLabel="Todos los estados"
+				[options]="stateOptions"
+				[value]="stateValue()"
+				(valueChange)="setState($event)"
+			/>
+			<app-filter-select
+				class="w-full sm:w-66"
+				label="Domiciliario"
+				allLabel="Todos"
+				[options]="driverOptions()"
+				[value]="driverValue()"
+				(valueChange)="setDriver($event)"
+			/>
+		</div>
+	</div>
+
+	<!-- Rango de fechas (día de entrega) -->
+	<div class="grid gap-2 sm:max-w-xl sm:grid-cols-2">
+		<app-history-date-card
+			label="Rango de fecha inicial"
+			[value]="table.filters().date_from"
+			[max]="table.filters().date_to"
+			(valueChange)="setDateFrom($event)"
+		/>
+		<app-history-date-card
+			label="Rango de fecha final"
+			[value]="table.filters().date_to"
+			[min]="table.filters().date_from"
+			(valueChange)="setDateTo($event)"
+		/>
+	</div>
+
+	<!-- Tabla -->
+	<div class="overflow-hidden rounded-2xl bg-white shadow-card">
+		<app-data-table>
+			<table>
+				<caption class="sr-only">
+					Pedidos entregados entre el {{ table.filters().date_from | bogotaDate: dateFormat }} y el
+					{{ table.filters().date_to | bogotaDate: dateFormat }}
+				</caption>
+				<thead>
+					<tr>
+						<th scope="col">PO</th>
+						<th scope="col">PEDIDO Y FECHA</th>
+						<th scope="col">CLIENTE</th>
+						<th scope="col">PRODUCTO</th>
+						<th scope="col">DOMICILIARIO</th>
+						<th scope="col">VALOR</th>
+						<th scope="col">ESTADO</th>
+						<th scope="col">VER</th>
+					</tr>
+				</thead>
+				@if (table.loading()) {
+					<tbody app-table-skeleton [rows]="8" [columns]="columnCount"></tbody>
+				} @else {
+					<tbody [class.opacity-60]="table.refreshing()" [attr.aria-busy]="table.refreshing()">
+						@for (row of table.items(); track row.id_order) {
+							<tr>
+								<td class="font-semibold tabular-nums text-slate-600">{{ row.purchase_order }}</td>
+								<td>
+									<span class="block font-semibold tabular-nums text-slate-900">{{ row.id_order }}</span>
+									<span class="block text-xs tabular-nums text-slate-500">{{ row.order_date | bogotaDate: dateFormat }}</span>
+								</td>
+								<td>
+									<span class="block font-semibold text-slate-900">{{ row.client_name }}</span>
+									<span class="block text-xs text-slate-500">{{ row.zone_name }}</span>
+								</td>
+								<td>
+									<span class="mx-auto block max-w-52 truncate font-semibold text-slate-900" [title]="row.product_codes">
+										{{ row.product_codes }}
+									</span>
+									<span class="block text-xs text-slate-500">Cantidad total: {{ row.total_quantity }}</span>
+								</td>
+								<td>
+									@if (row.driver_code) {
+										<span class="block font-semibold tabular-nums text-slate-900">{{ row.driver_code }}</span>
+										<span class="block text-xs text-slate-500">{{ row.driver_name }}</span>
+									} @else {
+										<span class="text-slate-500">Sin asignar</span>
+									}
+								</td>
+								<td class="whitespace-nowrap font-semibold tabular-nums text-slate-900">
+									@if (row.order_total !== null) {
+										{{ row.order_total | cop }} COP
+									} @else {
+										<span class="font-normal text-slate-500">—</span>
+									}
+								</td>
+								<td>
+									<app-status-badge [tone]="stateTone(row.state)">{{ stateLabels[row.state] }}</app-status-badge>
+								</td>
+								<td>
+									<button
+										app-icon-button
+										icon="eye"
+										[label]="'Ver detalle del pedido ' + row.purchase_order + ' del ' + (row.order_date | bogotaDate: dateFormat)"
+										(click)="openDetail(row)"
+									></button>
+								</td>
+							</tr>
+						}
+					</tbody>
+				}
+			</table>
+		</app-data-table>
+
+		<!-- Sin datos / error -->
+		@if (!table.loading()) {
+			@if (table.failed()) {
+				<app-empty-state
+					icon="exclamation-triangle"
+					title="No se pudo cargar el histórico"
+					description="Revisa tu conexión e inténtalo de nuevo."
+				>
+					<button type="button" class="btn-primary" (click)="table.reload()">Reintentar</button>
+				</app-empty-state>
+			} @else if (table.total() === 0) {
+				@if (filtered()) {
+					<app-empty-state
+						icon="magnifying-glass"
+						title="Ningún pedido coincide con los filtros"
+						description="Prueba con otras fechas, otro estado o quita la búsqueda."
+					>
+						<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
+					</app-empty-state>
+				} @else {
+					<app-empty-state
+						icon="inbox"
+						title="No hay pedidos en estas fechas"
+						description="Cambia el rango de fechas para ver otros días."
+					/>
+				}
+			}
+		}
+
+		<!-- Pie: conteo, total vendido y paginación -->
+		<div class="px-4 pb-2 sm:px-6">
+			<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-3">
+				<p class="flex flex-wrap items-center gap-x-3 text-xs text-slate-500" aria-live="polite">
+					@if (summary()) {
+						<span>{{ summary() }}</span>
+					}
+					@if (totalSales()) {
+						<span>
+							Total vendido: <strong class="font-semibold tabular-nums text-slate-800">{{ totalSales() }}</strong>
+							<span class="text-slate-400">(sin cancelados)</span>
+						</span>
+					}
+				</p>
+				<app-page-size-select [options]="pageSizeOptions" [(size)]="table.pageSize" />
+			</div>
+			<app-pagination [totalPages]="table.pages()" [(page)]="table.page" />
+		</div>
+	</div>
+</section>
+
+<app-order-detail-modal readonly [orderId]="selectedId()" (closed)="selectedId.set(null)" />

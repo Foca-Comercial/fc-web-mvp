@@ -3,11 +3,9 @@
 // ==================================================
 // Todas cuelgan del layout (SystemShell). Cada vista declara los roles que la
 // ven, los mismos que exige su endpoint en la API (ADMINISTRADOR siempre pasa).
-// PROVISIONAL: ComingSoonComponent ocupa el lugar de cada vista hasta construirla;
-// entonces se cambia por `loadComponent` o `loadChildren` de su carpeta.
+// Cada vista se carga bajo demanda (`loadComponent` / `loadChildren` de su carpeta).
 
 import { Routes } from '@angular/router';
-import { ComingSoonComponent } from '@components/Shared/coming-soon/coming-soon.component';
 import { roleGuard, roleMatchGuard } from '@core/Guards/role.guard';
 import { ROLES } from '@core/Constants/roles';
 import { SystemShellComponent } from './system-shell/system-shell.component';
@@ -37,8 +35,9 @@ export const SYSTEM_ROUTES: Routes = [
 			},
 			{
 				path: 'historico',
-				title: 'Histórico · Foca Comercial',
-				component: ComingSoonComponent,
+				title: 'Histórico de pedidos · Foca Comercial',
+				loadComponent: () =>
+					import('./History/history-board/history-board.component').then((m) => m.HistoryBoardComponent),
 				canActivate: [roleGuard],
 				data: { roles: MANAGER, title: 'Histórico' },
 			},

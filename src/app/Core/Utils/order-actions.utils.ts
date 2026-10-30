@@ -15,6 +15,15 @@ export interface OrderCapabilities {
 	canPrintReceipt: boolean; // el CD solo existe desde que se despacha
 }
 
+// Solo consulta (p. ej. el histórico: lo que ya quedó cerrado no se toca)
+export const READ_ONLY_CAPABILITIES: OrderCapabilities = {
+	canDispatch: false,
+	canDeliver: false,
+	canEdit: false,
+	canChangeDriver: false,
+	canPrintReceipt: false,
+};
+
 // `scheduled`: el pedido es de un día posterior a hoy (ver schedule.utils). Se puede ver y
 // editar, pero no despachar hasta su día (la API responde 422 ORDER_SCHEDULED).
 export function orderCapabilities(state: OrderState, scheduled = false): OrderCapabilities {

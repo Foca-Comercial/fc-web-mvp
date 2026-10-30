@@ -43,9 +43,11 @@ import { BOARD_PAGE_SIZE } from '@core/Utils/order-board.utils';
 
 export type ServerTableQuery<F extends object> = F & PageRequest;
 
-export interface ServerTableOptions<F extends object, T> {
+// P: la respuesta de la API. Por defecto Page<T>; una vista puede usar un tipo que la
+// extienda con datos propios (p. ej. el histórico trae el total de ventas del filtro).
+export interface ServerTableOptions<F extends object, T, P extends Page<T> = Page<T>> {
 	// Pide una página a la API con los filtros actuales (el servicio arma los query params)
-	load: (query: ServerTableQuery<F>) => Observable<Page<T>>;
+	load: (query: ServerTableQuery<F>) => Observable<P>;
 	// Filtros iniciales; también son los que restaura resetFilters()
 	filters: F;
 	pageSize?: number;
@@ -53,11 +55,11 @@ export interface ServerTableOptions<F extends object, T> {
 	errorTitle?: string;
 }
 
-type LoadResult<T> = { ok: true; data: Page<T> } | { ok: false; error: unknown };
+type LoadResult<P> = { ok: true; data: P } | { ok: false; error: unknown };
 
-export class ServerTable<F extends object, T> {
+export class ServerTable<F extends object, T, P extends Page<T> = Page<T>> {
 	private readonly apiAlert = inject(ApiAlertService);
-	private readonly options: ServerTableOptions<F, T>;
+	private readonly options: ServerTableOptions<F, T, P>;
 
 	// ----- Lo que pide la vista -----
 	readonly filters: WritableSignal<F>;
@@ -66,7 +68,7 @@ export class ServerTable<F extends object, T> {
 	readonly page: WritableSignal<number>;
 
 	// ----- Lo que responde la API -----
-	readonly data = signal<Page<T> | null>(null);
+	readonly data = signal<P | null>(null);
 	readonly loading = signal(true); // primera carga: esqueleto
 	readonly refreshing = signal(false); // recargas: las filas anteriores siguen visibles
 	readonly failed = signal(false); // falló sin haber cargado nunca
@@ -80,7 +82,7 @@ export class ServerTable<F extends object, T> {
 
 	private readonly reloadTick = signal(0);
 
-	constructor(options: ServerTableOptions<F, T>) {
+	constructor(options: ServerTableOptions<F, T, P>) {
 		this.options = options;
 		this.filters = signal(options.filters);
 		this.pageSize = signal(options.pageSize ?? BOARD_PAGE_SIZE);
@@ -100,8 +102,8 @@ export class ServerTable<F extends object, T> {
 				switchMap(({ query }) => {
 					this.startLoading();
 					return this.options.load(query).pipe(
-						map((data): LoadResult<T> => ({ ok: true, data })),
-						catchError((error: unknown) => of<LoadResult<T>>({ ok: false, error })),
+						map((data): LoadResult<P> => ({ ok: true, data })),
+						catchError((error: unknown) => of<LoadResult<P>>({ ok: false, error })),
 						map((result) => ({ result, query }))
 					);
 				}),
@@ -138,7 +140,7 @@ export class ServerTable<F extends object, T> {
 		}
 	}
 
-	private finish(result: LoadResult<T>, query: ServerTableQuery<F>): void {
+	private finish(result: LoadResult<P>, query: ServerTableQuery<F>): void {
 		this.loading.set(false);
 		this.refreshing.set(false);
 

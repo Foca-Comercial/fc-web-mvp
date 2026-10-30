@@ -10,7 +10,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-export type BadgeTone = 'pending' | 'soon' | 'late' | 'done' | 'cancelled' | 'neutral';
+export type BadgeTone = 'pending' | 'soon' | 'late' | 'done' | 'cancelled' | 'danger' | 'neutral';
 
 const TONES: Record<BadgeTone, { box: string; dot: string }> = {
 	pending: { box: 'border-brand-300 bg-brand-50 text-brand-900', dot: 'bg-brand-600' },
@@ -18,6 +18,8 @@ const TONES: Record<BadgeTone, { box: string; dot: string }> = {
 	late: { box: 'border-danger-300 bg-danger-50 text-danger-700', dot: 'bg-danger-500 motion-safe:animate-pulse' },
 	done: { box: 'border-success-300 bg-success-50 text-success-800', dot: 'bg-success-500' },
 	cancelled: { box: 'border-slate-300 bg-slate-100 text-slate-600', dot: 'bg-slate-400' },
+	// Rojo fijo (sin el pulso de "late"): p. ej. un pedido cancelado en el histórico
+	danger: { box: 'border-danger-300 bg-danger-50 text-danger-700', dot: 'bg-danger-500' },
 	neutral: { box: 'border-slate-300 bg-slate-100 text-slate-600', dot: 'bg-slate-400' },
 };
 

@@ -151,12 +151,19 @@ export function buildRouteOrdersPayload(
 	};
 }
 
+// Ícono "exclamation-triangle" de Heroicons para el HTML de SweetAlert (no usa <app-icon>).
+// display:inline-block porque la base de Tailwind pone todo <svg> en display:block.
+const WARNING_ICON =
+	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;width:1rem;height:1rem;vertical-align:-.15rem">' +
+	'<path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>';
+
 // HTML de la alerta de confirmación: una cajita gris por pedido (cliente, su total y sus
 // productos) y el total estimado. Estilos en línea porque SweetAlert pinta este HTML tal
-// cual; los colores son los de slate / brand de styles.css.
+// cual; los colores son los de slate / brand / warning de styles.css.
+// `driverText` null = sin domiciliario: se resalta en ámbar para que no pase desapercibido.
 export function routeOrdersConfirmHtml(
 	drafts: readonly RouteOrderDraft[],
-	meta: { deliveryText: string; driverText: string }
+	meta: { deliveryText: string; driverText: string | null }
 ): string {
 	const boxes = drafts
 		.map((draft) => {
@@ -180,11 +187,16 @@ export function routeOrdersConfirmHtml(
 		})
 		.join('');
 
+	const driver = meta.driverText
+		? `<strong>${escapeHtml(meta.driverText)}</strong>`
+		: `<strong style="color:#b45309">${WARNING_ICON} Sin asignar</strong>`;
+	// Cada dato en un bloque que no se parte: "Domiciliario: ⚠ Sin asignar" siempre junto
+
 	return `
 		<div style="text-align:left">
 			<p style="margin:0 0 .75rem">
-				Entrega estimada: <strong>${escapeHtml(meta.deliveryText)}</strong> ·
-				Domiciliario: <strong>${escapeHtml(meta.driverText)}</strong>
+				<span style="white-space:nowrap">Entrega estimada: <strong>${escapeHtml(meta.deliveryText)}</strong></span> ·
+				<span style="white-space:nowrap">Domiciliario: ${driver}</span>
 			</p>
 			<div style="display:grid;gap:.5rem;max-height:20rem;overflow-y:auto;padding-right:.25rem">${boxes}</div>
 			<p style="margin:.75rem 0 0;text-align:right">Total estimado: <strong style="color:#172554">${formatCop(draftsTotal(drafts))}</strong></p>

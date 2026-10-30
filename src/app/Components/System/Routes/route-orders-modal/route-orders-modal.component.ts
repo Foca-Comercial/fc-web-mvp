@@ -275,7 +275,7 @@ export class RouteOrdersModalComponent {
 		const driver = this.drivers().find((option) => option.id_user_vehicle === this.driverId());
 		const html = routeOrdersConfirmHtml(drafts, {
 			deliveryText: formatDepartureTime(this.deliveryTime()) || 'Sin hora definida',
-			driverText: driver ? `${driver.code} · ${driver.driver_name}` : 'Sin asignar',
+			driverText: driver ? `${driver.code} · ${driver.driver_name}` : null,
 		});
 		const payload = buildRouteOrdersPayload(drafts, this.deliveryTime(), this.driverId());
 

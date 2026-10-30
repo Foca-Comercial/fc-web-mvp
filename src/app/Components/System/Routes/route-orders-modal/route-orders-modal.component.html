@@ -35,6 +35,11 @@
 					<p id="route-orders-driver-error" class="mt-1.5 text-xs font-semibold text-warning-700">
 						No se pudo cargar la lista de domiciliarios. Los pedidos se crean sin asignar y se asignan después en el tablero.
 					</p>
+				} @else if (driverId() === null) {
+					<p class="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-warning-700" role="status">
+						<app-icon name="exclamation-triangle" size="size-4" class="text-warning-500" />
+						Los pedidos se agregarán sin domiciliario.
+					</p>
 				}
 			</div>
 		</div>

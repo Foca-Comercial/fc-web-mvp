@@ -95,6 +95,12 @@ export function filterRoutes<T extends RouteCardInfo>(cards: readonly T[], filte
 	);
 }
 
+// Rutas del día: primero las que faltan por agregar y al final las ya agregadas al tablero.
+// Dentro de cada grupo se respeta el orden que trae la API (hora de salida).
+export function sortDayCards(cards: readonly RouteDayCard[]): RouteDayCard[] {
+	return [...cards].sort((a, b) => Number(a.status === 'added') - Number(b.status === 'added'));
+}
+
 // Zonas distintas de todas las rutas, ordenadas A-Z
 export function routeZoneOptions(cards: readonly RouteCardInfo[]): { value: string; label: string }[] {
 	const zones = [...new Set(cards.flatMap((card) => card.zones))];

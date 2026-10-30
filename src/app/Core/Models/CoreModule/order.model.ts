@@ -4,7 +4,7 @@
 // Espejo de order_schema, order_detail_schema, order_history_schema y
 // route_order_schema (app/schemas/coreModule).
 
-import { IsoDate, IsoDateTime, Money, MoneyInput, OrderState, TimeString } from '../Shared/api-types.model';
+import { IsoDate, IsoDateTime, Money, MoneyInput, OrderState, Page, TimeString } from '../Shared/api-types.model';
 import { NewClientInput } from './catalog.model';
 
 // ----- Respuestas -----
@@ -162,15 +162,11 @@ export interface OrderHistoryRow {
 	state: OrderState;
 }
 
-export interface OrderHistoryPage {
+// Página del histórico: Page<T> más el rango aplicado y el total vendido del filtro
+export interface OrderHistoryPage extends Page<OrderHistoryRow> {
 	date_from: IsoDate;
 	date_to: IsoDate;
-	page: number;
-	page_size: number;
-	total: number;
-	pages: number;
 	total_sales: Money; // sin cancelados
-	items: OrderHistoryRow[];
 }
 
 // ----- Pedidos por ruta -----

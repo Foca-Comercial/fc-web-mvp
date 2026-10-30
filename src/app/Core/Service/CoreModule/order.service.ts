@@ -8,6 +8,8 @@ import {
 	OrderCreateExistingClient,
 	OrderCreateNewClient,
 	OrderFullDetail,
+	OrderHistoryPage,
+	OrderHistoryQuery,
 	OrderItemsSyncRequest,
 	OrderSummary,
 	OrderUpdate,
@@ -18,11 +20,11 @@ import {
 	RouteOrderTemplate,
 } from '@core/Models/CoreModule/order.model';
 import { IsoDate } from '@core/Models/Shared/api-types.model';
+import { toHttpParams } from '@core/Utils/http-params.utils';
 import { ReadOnlyService } from '../generic.service';
 
 // Pedidos (/orders). No usa el CRUD genérico: no existe POST /orders/ ni DELETE.
-// Los demás flujos (new-client, existing-client, items-order, history…) se agregan
-// al construir cada vista.
+// Los demás flujos se agregan al construir cada vista.
 @Injectable({ providedIn: 'root' })
 export class OrderService extends ReadOnlyService<Order> {
 	constructor() {
@@ -101,6 +103,13 @@ export class OrderService extends ReadOnlyService<Order> {
 	// Crea en una sola transacción los pedidos de los clientes que traen productos (todo o nada)
 	createRouteOrders(id: number, body: RouteOrdersCreate): Observable<RouteOrdersCreated> {
 		return this.http.post<RouteOrdersCreated>(`${this.baseUrl}/routes/${id}`, body);
+	}
+
+	// ----- Histórico -----
+	// Pedidos por día de entrega, paginados en la API, con el total vendido del filtro.
+	// Sin fechas, la API usa del 1 del mes anterior a hoy. Los filtros vacíos no se envían.
+	getHistory(query: OrderHistoryQuery): Observable<OrderHistoryPage> {
+		return this.http.get<OrderHistoryPage>(`${this.baseUrl}/history`, { params: toHttpParams(query) });
 	}
 
 	private dateParams(date?: IsoDate): HttpParams {
