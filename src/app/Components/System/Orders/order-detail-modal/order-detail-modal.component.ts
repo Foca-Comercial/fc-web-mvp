@@ -5,8 +5,13 @@
 // estado permite:
 //   - PENDING: editar la hora estimada y los productos (modo "Editar pedido", ver order-edit).
 //   - PENDING / DISPATCHED: asignar, cambiar o quitar el domiciliario (PATCH /orders/{id}).
-//   - DISPATCHED / DELIVERED: reimprimir el comprobante de despacho (CD).
+//   - PENDING / DISPATCHED: cambiar el método de pago, el tipo de factura y la observación
+//     (bloque «Pago y factura», PATCH /orders/{id}, con su propio botón Guardar).
+//   - DISPATCHED / DELIVERED: reimprimir el comprobante de despacho (CD), solo si el pedido
+//     lleva CD (`has_receipt`: POS + efectivo).
 //   - DELIVERED / CANCELLED: solo lectura (la API rechaza cambios en estados finales).
+// Muestra también la auditoría: cuándo y quién registró el pedido, la última edición de sus
+// productos (quién y cuándo) y, si está cancelado, el motivo, la nota, quién y cuándo.
 // Con `readonly` no muestra ninguna acción, sea cual sea el estado (p. ej. el histórico).
 // Se abre cuando `orderId` trae un número. Avisa con `(closed)` para que quien lo usa
 // vuelva a dejarlo en null, y con `(changed)` cuando guardó un cambio, para que refresque.
@@ -49,6 +54,7 @@ import { OrderEditComponent } from '@components/System/Orders/order-edit/order-e
 import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
 import { DriverVehicleDropdown } from '@core/Models/CoreModule/catalog.model';
 import { OrderFullDetail } from '@core/Models/CoreModule/order.model';
+import { CANCEL_REASON_LABELS, INVOICE_TYPE_LABELS, PAYMENT_METHOD_LABELS } from '@core/Models/Shared/api-types.model';
 import { ApiTimePipe } from '@core/Pipes/api-time.pipe';
 import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
 import { CopCurrencyPipe } from '@core/Pipes/cop-currency.pipe';
@@ -56,7 +62,16 @@ import { OrderReceiptService } from '@core/Service/CoreModule/order-receipt.serv
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { parseApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
+import {
+	INVOICE_OPTIONS,
+	MAX_OBSERVATIONS_LENGTH,
+	PAYMENT_OPTIONS,
+	noReceiptNotice,
+	toInvoiceType,
+	toPaymentMethod,
+} from '@core/Utils/billing.utils';
 import { todayBogota } from '@core/Utils/date.utils';
+import { BillingDraft, billingChanges, billingProblem, draftFromOrder, hasBillingChanges } from '@core/Utils/order-detail.utils';
 import { orderCapabilities, READ_ONLY_CAPABILITIES } from '@core/Utils/order-actions.utils';
 import { isScheduled } from '@core/Utils/schedule.utils';
 
@@ -106,8 +121,22 @@ export class OrderDetailModalComponent {
 	// Pide de nuevo el detalle (reintentar, o refrescar después de guardar)
 	private readonly reload$ = new Subject<LoadMode>();
 
-	protected readonly timeOnly: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
 	protected readonly longDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+	// "11/11/2026, 3:05 p. m." (hora de Bogotá)
+	protected readonly dateTime: Intl.DateTimeFormatOptions = {
+		day: '2-digit',
+		month: '2-digit',
+		year: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: true,
+	};
+	protected readonly paymentLabels = PAYMENT_METHOD_LABELS;
+	protected readonly invoiceLabels = INVOICE_TYPE_LABELS;
+	protected readonly cancelLabels = CANCEL_REASON_LABELS;
+	protected readonly paymentOptions = PAYMENT_OPTIONS;
+	protected readonly invoiceOptions = INVOICE_OPTIONS;
+	protected readonly maxObservations = MAX_OBSERVATIONS_LENGTH;
 
 	// Un solo flujo: cada cambio de pedido cancela la petición anterior (switchMap)
 	protected readonly detail = toSignal(
@@ -175,6 +204,28 @@ export class OrderDetailModalComponent {
 		);
 	});
 
+	// ----- Pago, factura y observación -----
+	// Se reinicia con el pedido guardado cada vez que llega un detalle nuevo
+	protected readonly billingDraft = linkedSignal<OrderFullDetail | null, BillingDraft | null>({
+		source: this.order,
+		computation: (order) => (order ? draftFromOrder(order) : null),
+	});
+	private readonly billingPatch = computed(() => {
+		const order = this.order();
+		const draft = this.billingDraft();
+		return order && draft ? billingChanges(order, draft) : {};
+	});
+	protected readonly billingDirty = computed(() => hasBillingChanges(this.billingPatch()));
+	protected readonly billingIssue = computed(() => {
+		const draft = this.billingDraft();
+		return draft ? billingProblem(draft) : null;
+	});
+	// Aviso de que, con lo elegido, el pedido no lleva CD
+	protected readonly billingNotice = computed(() => {
+		const draft = this.billingDraft();
+		return draft ? noReceiptNotice(draft.paymentMethod, draft.invoiceType) : null;
+	});
+
 	// Ver o editar los productos y la hora; siempre abre en "ver"
 	protected readonly editing = linkedSignal<number | null, boolean>({ source: this.orderId, computation: () => false });
 
@@ -216,6 +267,36 @@ export class OrderDetailModalComponent {
 				tone: 'success',
 				text: driverId === null ? 'Domiciliario quitado del pedido.' : 'Domiciliario actualizado.',
 			});
+			this.reload$.next('refresh');
+			this.changed.emit();
+		} catch (error) {
+			this.feedback.set({ tone: 'error', text: (await parseApiErrorAsync(error)).message });
+		} finally {
+			this.saving.set(false);
+		}
+	}
+
+	protected setPayment(value: string): void {
+		this.billingDraft.update((draft) => (draft ? { ...draft, paymentMethod: toPaymentMethod(value) } : draft));
+	}
+
+	protected setInvoice(value: string): void {
+		this.billingDraft.update((draft) => (draft ? { ...draft, invoiceType: toInvoiceType(value) } : draft));
+	}
+
+	protected setObservations(value: string): void {
+		this.billingDraft.update((draft) => (draft ? { ...draft, observations: value } : draft));
+	}
+
+	protected async saveBilling(): Promise<void> {
+		const order = this.order();
+		if (!order || this.saving() || !this.billingDirty() || this.billingIssue() !== null) return;
+
+		this.saving.set(true);
+		this.feedback.set(null);
+		try {
+			await firstValueFrom(this.orders.updateOrder(order.id_order, this.billingPatch()));
+			this.feedback.set({ tone: 'success', text: 'Pago y factura actualizados.' });
 			this.reload$.next('refresh');
 			this.changed.emit();
 		} catch (error) {

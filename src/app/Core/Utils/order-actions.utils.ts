@@ -12,7 +12,8 @@ export interface OrderCapabilities {
 	canDeliver: boolean; // marcar como entregado
 	canEdit: boolean; // cambiar productos y hora estimada (solo antes de despachar)
 	canChangeDriver: boolean; // asignar, cambiar o quitar domiciliario
-	canPrintReceipt: boolean; // el CD solo existe desde que se despacha
+	canPrintReceipt: boolean; // el CD solo existe desde que se despacha (y solo si el pedido lleva CD: has_receipt)
+	canEditBilling: boolean; // cambiar método de pago, tipo de factura y observación
 }
 
 // Solo consulta (p. ej. el histórico: lo que ya quedó cerrado no se toca)
@@ -22,6 +23,7 @@ export const READ_ONLY_CAPABILITIES: OrderCapabilities = {
 	canEdit: false,
 	canChangeDriver: false,
 	canPrintReceipt: false,
+	canEditBilling: false,
 };
 
 // `scheduled`: el pedido es de un día posterior a hoy (ver schedule.utils). Se puede ver y
@@ -33,5 +35,7 @@ export function orderCapabilities(state: OrderState, scheduled = false): OrderCa
 		canEdit: state === OrderState.PENDING,
 		canChangeDriver: state === OrderState.PENDING || state === OrderState.DISPATCHED,
 		canPrintReceipt: state === OrderState.DISPATCHED || state === OrderState.DELIVERED,
+		// Igual que el domiciliario: hasta que el pedido sea final (p. ej. el cliente decide pagar por transferencia al recibir)
+		canEditBilling: state === OrderState.PENDING || state === OrderState.DISPATCHED,
 	};
 }

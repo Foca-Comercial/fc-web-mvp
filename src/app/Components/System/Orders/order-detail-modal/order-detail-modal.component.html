@@ -6,9 +6,27 @@
 		<div class="mb-5 flex flex-wrap items-center gap-3">
 			<app-order-status-badge [state]="order.state" [estimatedDelivery]="order.estimated_delivery" [orderDate]="order.delivery_date" />
 			<span class="text-sm text-slate-500">
-				Creado a las {{ order.creation_datetime | bogotaDate: timeOnly }}
+				Registrado el {{ order.creation_datetime | bogotaDate: dateTime }}
 			</span>
 		</div>
+
+		<!-- Cancelación -->
+		@if (order.cancel_reason; as reason) {
+			<div class="mb-5 rounded-xl border border-danger-300 bg-danger-50 px-4 py-3 text-sm text-danger-700" role="status">
+				<p class="font-bold">Pedido cancelado · {{ cancelLabels[reason] }}</p>
+				@if (order.cancel_note) {
+					<p class="mt-1 text-slate-800">{{ order.cancel_note }}</p>
+				}
+				<p class="mt-1 text-xs text-slate-600">
+					@if (order.canceller_name) {
+						Por {{ order.canceller_name }}
+					}
+					@if (order.cancelled_at) {
+						· {{ order.cancelled_at | bogotaDate: dateTime }}
+					}
+				</p>
+			</div>
+		}
 
 		<dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
 			<div>
@@ -45,6 +63,24 @@
 					<dd class="mt-0.5 text-slate-800">{{ order.delivery_time | apiTime }}</dd>
 				</div>
 			}
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Registrado por</dt>
+				<dd class="mt-0.5 text-slate-800">{{ order.taker_name }}</dd>
+			</div>
+			<div>
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Ruta</dt>
+				<dd class="mt-0.5 text-slate-800">{{ order.route_name || 'Pedido individual' }}</dd>
+			</div>
+			<div class="sm:col-span-2">
+				<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Última edición de productos</dt>
+				<dd class="mt-0.5 text-slate-800">
+					@if (order.items_updater_name && order.items_updated_at) {
+						{{ order.items_updater_name }} · {{ order.items_updated_at | bogotaDate: dateTime }}
+					} @else {
+						Sin ediciones
+					}
+				</dd>
+			</div>
 			<div class="sm:col-span-2">
 				@if (capabilities()?.canChangeDriver) {
 					<label for="order-detail-driver" class="text-xs font-bold uppercase tracking-wide text-slate-500">Domiciliario</label>
@@ -90,6 +126,87 @@
 				}
 			</div>
 		</dl>
+
+		<!-- Pago, factura y observación -->
+		<section class="mt-5 border-t border-slate-200 pt-4" aria-label="Pago y factura">
+			<h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-brand-900">Pago y factura</h3>
+			@if (capabilities()?.canEditBilling && billingDraft(); as draft) {
+				<div class="grid gap-4 sm:grid-cols-2">
+					<div>
+						<label for="order-detail-payment" class="form-label">Método de pago</label>
+						<select
+							id="order-detail-payment"
+							class="form-input"
+							[disabled]="saving() || editing()"
+							(change)="setPayment($any($event.target).value)"
+						>
+							@for (option of paymentOptions; track option.value) {
+								<option [value]="option.value" [selected]="draft.paymentMethod === option.value">{{ option.label }}</option>
+							}
+						</select>
+					</div>
+					<div>
+						<label for="order-detail-invoice" class="form-label">Tipo de factura</label>
+						<select
+							id="order-detail-invoice"
+							class="form-input"
+							[disabled]="saving() || editing()"
+							(change)="setInvoice($any($event.target).value)"
+						>
+							@for (option of invoiceOptions; track option.value) {
+								<option [value]="option.value" [selected]="draft.invoiceType === option.value">{{ option.label }}</option>
+							}
+						</select>
+					</div>
+					<div class="sm:col-span-2">
+						<label for="order-detail-observations" class="form-label">Observación (opcional)</label>
+						<textarea
+							id="order-detail-observations"
+							rows="2"
+							class="form-input resize-y"
+							placeholder="Algo a tener en cuenta de este pedido"
+							[maxLength]="maxObservations"
+							[value]="draft.observations"
+							[disabled]="saving() || editing()"
+							[attr.aria-invalid]="billingIssue() ? 'true' : null"
+							(input)="setObservations($any($event.target).value)"
+						></textarea>
+						<p class="mt-1 text-right text-xs tabular-nums text-slate-400">{{ draft.observations.length }}/{{ maxObservations }}</p>
+						@if (billingIssue(); as message) {
+							<p class="form-error">{{ message }}</p>
+						}
+					</div>
+				</div>
+				@if (billingNotice(); as notice) {
+					<p class="mt-2 text-xs font-medium text-warning-700" role="status">{{ notice }}</p>
+				}
+				<div class="mt-3 flex justify-end">
+					<button
+						type="button"
+						class="btn-primary"
+						[disabled]="!billingDirty() || billingIssue() !== null || saving() || editing()"
+						(click)="saveBilling()"
+					>
+						{{ saving() ? 'Guardando…' : 'Guardar' }}
+					</button>
+				</div>
+			} @else {
+				<dl class="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+					<div>
+						<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Método de pago</dt>
+						<dd class="mt-0.5 text-slate-800">{{ paymentLabels[order.payment_method] }}</dd>
+					</div>
+					<div>
+						<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Tipo de factura</dt>
+						<dd class="mt-0.5 text-slate-800">{{ invoiceLabels[order.invoice_type] }}</dd>
+					</div>
+					<div class="sm:col-span-2">
+						<dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Observación</dt>
+						<dd class="mt-0.5 whitespace-pre-line text-slate-800">{{ order.observations || 'Sin observación' }}</dd>
+					</div>
+				</dl>
+			}
+		</section>
 
 		@if (editing()) {
 			<div class="mt-6 border-t border-slate-200 pt-5">
@@ -170,7 +287,7 @@
 						Editar pedido
 					</button>
 				}
-				@if (capabilities()?.canPrintReceipt) {
+				@if (capabilities()?.canPrintReceipt && order()?.has_receipt) {
 					<button type="button" class="btn-secondary" [disabled]="printing()" (click)="printReceipt()">
 						<app-icon name="document-text" size="size-4" />
 						{{ printing() ? 'Abriendo…' : 'Reimprimir CD' }}
