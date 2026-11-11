@@ -8,6 +8,10 @@
 // los pedidos a crear y en el texto de la confirmación.
 // El precio NO se envía: lo pone el backend (el pactado). Los totales son solo para mostrar.
 // Otros productos o precios se agregan después, editando el pedido en el tablero.
+// Pago: cada cliente arranca en efectivo y el gestor puede cambiarlo (transferencia o crédito).
+// Factura: no se elige aquí; cada pedido sale con la del cliente (electrónica si se le hace
+// factura electrónica, si no POS) y se ajusta después en el detalle del pedido. Solo POS +
+// efectivo lleva CD: la confirmación avisa cuántos pedidos no lo llevarán.
 
 import {
 	RouteOrderItemInput,
@@ -16,6 +20,8 @@ import {
 	RouteTemplateClient,
 	RouteTemplateProduct,
 } from '@core/Models/CoreModule/order.model';
+import { InvoiceType, PAYMENT_METHOD_LABELS, PaymentMethod } from '@core/Models/Shared/api-types.model';
+import { defaultInvoiceType, hasReceipt } from './billing.utils';
 import { toApiTime } from './date.utils';
 import { escapeHtml } from './html.utils';
 import { formatCop, toNumber } from './money.utils';
@@ -32,6 +38,22 @@ export type RouteSelections = Readonly<Record<number, readonly RouteLineInput[]>
 
 // Clientes marcados como "No pidió hoy"
 export type RouteExclusions = ReadonlySet<number>;
+
+// Método de pago elegido por cliente; el que no aparece paga en efectivo
+export type RoutePayments = Readonly<Record<number, PaymentMethod>>;
+
+export function paymentOf(payments: RoutePayments, idClient: number): PaymentMethod {
+	return payments[idClient] ?? PaymentMethod.CASH;
+}
+
+export function setClientPayment(payments: RoutePayments, idClient: number, method: PaymentMethod): RoutePayments {
+	return { ...payments, [idClient]: method };
+}
+
+// Factura con la que sale el pedido de un cliente de la ruta (siempre registrado)
+export function clientInvoiceType(client: Pick<RouteTemplateClient, 'requires_electronic_invoice'>): InvoiceType {
+	return defaultInvoiceType(client.requires_electronic_invoice);
+}
 
 // Agrega el producto con cantidad 1 (si ya estaba, no lo repite: la API rechaza productos repetidos)
 export function addProduct(selections: RouteSelections, idClient: number, idProduct: number): RouteSelections {
@@ -94,6 +116,7 @@ export interface RouteOrderDraft {
 	client: RouteTemplateClient;
 	lines: RouteOrderLine[];
 	total: number;
+	paymentMethod: PaymentMethod;
 }
 
 // Renglones elegidos de un cliente (incluye los que aún no tienen cantidad), en orden
@@ -118,13 +141,19 @@ export function removedProducts(client: RouteTemplateClient, selections: RouteSe
 export function buildRouteOrderDrafts(
 	template: RouteOrderTemplate,
 	selections: RouteSelections,
-	excluded: RouteExclusions = new Set()
+	excluded: RouteExclusions = new Set(),
+	payments: RoutePayments = {}
 ): RouteOrderDraft[] {
 	return orderableClients(template)
 		.filter((client) => !excluded.has(client.id_client))
 		.map((client) => {
 			const lines = clientLines(client, selections).filter((line) => line.cant > 0);
-			return { client, lines, total: lines.reduce((sum, line) => sum + line.subtotal, 0) };
+			return {
+				client,
+				lines,
+				total: lines.reduce((sum, line) => sum + line.subtotal, 0),
+				paymentMethod: paymentOf(payments, client.id_client),
+			};
 		})
 		.filter((draft) => draft.lines.length > 0);
 }
@@ -133,9 +162,14 @@ export function draftsTotal(drafts: readonly RouteOrderDraft[]): number {
 	return drafts.reduce((sum, draft) => sum + draft.total, 0);
 }
 
+// ¿Lleva CD el pedido de este borrador? (POS + efectivo)
+export function draftHasReceipt(draft: RouteOrderDraft): boolean {
+	return hasReceipt(draft.paymentMethod, clientInvoiceType(draft.client));
+}
+
 // ----- Envío -----
-// Body de POST /orders/routes/{id}: renglones sin precio. `deliveryTime` es el valor del
-// <input type="time">.
+// Body de POST /orders/routes/{id}: renglones sin precio y el pago de cada cliente (la factura
+// la pone la API con la del cliente). `deliveryTime` es el valor del <input type="time">.
 export function buildRouteOrdersPayload(
 	drafts: readonly RouteOrderDraft[],
 	deliveryTime: string,
@@ -146,6 +180,7 @@ export function buildRouteOrdersPayload(
 		id_user_vehicle: driverId,
 		orders: drafts.map((draft) => ({
 			id_client: draft.client.id_client,
+			payment_method: draft.paymentMethod,
 			items: draft.lines.map((line): RouteOrderItemInput => ({ id_product: line.product.id_product, cant: line.cant })),
 		})),
 	};
@@ -157,6 +192,10 @@ const WARNING_ICON =
 	'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;width:1rem;height:1rem;vertical-align:-.15rem">' +
 	'<path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>';
 
+// Etiqueta pequeña (pago distinto de efectivo, factura electrónica) junto al nombre del cliente
+const CHIP_STYLE =
+	'display:inline-block;margin-left:.25rem;padding:.05rem .5rem;border-radius:9999px;background:#dbeafe;color:#1e40af;font-size:.7rem;font-weight:600;white-space:nowrap';
+
 // HTML de la alerta de confirmación: una cajita gris por pedido (cliente, su total y sus
 // productos) y el total estimado. Estilos en línea porque SweetAlert pinta este HTML tal
 // cual; los colores son los de slate / brand / warning de styles.css.
@@ -167,6 +206,13 @@ export function routeOrdersConfirmHtml(
 ): string {
 	const boxes = drafts
 		.map((draft) => {
+			const chips = [
+				draft.paymentMethod !== PaymentMethod.CASH ? PAYMENT_METHOD_LABELS[draft.paymentMethod] : null,
+				draft.client.requires_electronic_invoice ? 'Factura electrónica' : null,
+			]
+				.filter((text): text is string => text !== null)
+				.map((text) => `<span style="${CHIP_STYLE}">${escapeHtml(text)}</span>`)
+				.join(' ');
 			const lines = draft.lines
 				.map(
 					(line) => `
@@ -179,13 +225,19 @@ export function routeOrdersConfirmHtml(
 			return `
 				<div style="border:1px solid #e2e8f0;border-radius:.75rem;background:#f1f5f9;padding:.625rem .875rem">
 					<div style="display:flex;justify-content:space-between;gap:1rem;padding-bottom:.375rem;margin-bottom:.25rem;border-bottom:1px solid #cbd5e1">
-						<strong style="color:#0f172a">${escapeHtml(draft.client.name)}</strong>
+						<span><strong style="color:#0f172a">${escapeHtml(draft.client.name)}</strong> ${chips}</span>
 						<strong style="white-space:nowrap;color:#172554;font-variant-numeric:tabular-nums">${formatCop(draft.total)}</strong>
 					</div>
 					<ul style="margin:0;padding:0;list-style:none;font-size:.875rem;color:#334155">${lines}</ul>
 				</div>`;
 		})
 		.join('');
+
+	const withoutReceipt = drafts.filter((draft) => !draftHasReceipt(draft)).length;
+	const receiptNote =
+		withoutReceipt > 0
+			? `<p style="margin:.5rem 0 0;font-size:.875rem;color:#b45309">${withoutReceipt} ${withoutReceipt === 1 ? 'pedido no lleva' : 'pedidos no llevan'} CD (se ${withoutReceipt === 1 ? 'factura' : 'facturan'} aparte en Siigo).</p>`
+			: '';
 
 	const driver = meta.driverText
 		? `<strong>${escapeHtml(meta.driverText)}</strong>`
@@ -199,6 +251,7 @@ export function routeOrdersConfirmHtml(
 				<span style="white-space:nowrap">Domiciliario: ${driver}</span>
 			</p>
 			<div style="display:grid;gap:.5rem;max-height:20rem;overflow-y:auto;padding-right:.25rem">${boxes}</div>
+			${receiptNote}
 			<p style="margin:.75rem 0 0;text-align:right">Total estimado: <strong style="color:#172554">${formatCop(draftsTotal(drafts))}</strong></p>
 		</div>
 	`;

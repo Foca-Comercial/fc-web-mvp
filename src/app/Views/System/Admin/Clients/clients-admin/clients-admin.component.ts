@@ -38,10 +38,13 @@ import { ServerTable } from '@core/State/server-table.state';
 import {
 	CLIENT_STATUS_OPTIONS,
 	DEFAULT_CLIENT_FILTERS,
+	ELECTRONIC_INVOICE_FILTER_OPTIONS,
 	activeToOption,
 	clientLinksSummary,
 	hasCustomFilters,
+	invoiceToOption,
 	optionToActive,
+	optionToInvoice,
 	optionToZone,
 	zoneFilterOptions,
 	zoneToOption,
@@ -83,7 +86,7 @@ export class ClientsAdminComponent {
 		errorTitle: 'No se pudieron cargar los clientes',
 	});
 	protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
-	protected readonly columnCount = 7;
+	protected readonly columnCount = 8;
 
 	// ----- Barrios: una sola carga para el filtro de zona y el formulario -----
 	// undefined = cargando, null = no se pudo cargar
@@ -98,8 +101,10 @@ export class ClientsAdminComponent {
 
 	// ----- Filtros (texto para los <select>) -----
 	protected readonly statusOptions = CLIENT_STATUS_OPTIONS;
+	protected readonly invoiceOptions = ELECTRONIC_INVOICE_FILTER_OPTIONS;
 	protected readonly statusValue = computed(() => activeToOption(this.table.filters().active));
 	protected readonly zoneValue = computed(() => zoneToOption(this.table.filters().id_zone));
+	protected readonly invoiceValue = computed(() => invoiceToOption(this.table.filters().electronic_invoice));
 	protected readonly filtered = computed(() => hasCustomFilters(this.table.filters()));
 
 	// ----- Formulario (crear / editar) -----
@@ -125,6 +130,10 @@ export class ClientsAdminComponent {
 
 	protected setZone(value: string): void {
 		this.table.setFilter('id_zone', optionToZone(value));
+	}
+
+	protected setInvoice(value: string): void {
+		this.table.setFilter('electronic_invoice', optionToInvoice(value));
 	}
 
 	protected clearFilters(): void {

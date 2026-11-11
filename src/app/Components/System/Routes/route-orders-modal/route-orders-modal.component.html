@@ -115,7 +115,35 @@
 						@if (editable) {
 							@let lines = linesOf(client);
 							@let removable = pickerOptions(client);
+							@let notice = receiptNotice(client);
 							<div class="border-t border-slate-200 px-4 py-3">
+								<!-- Pago del pedido y factura del cliente -->
+								<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+									<label class="text-xs font-bold uppercase tracking-wide text-slate-500" [for]="'route-payment-' + client.id_client">
+										Pago
+									</label>
+									<!-- .form-input fija width:100%, por eso el ancho va en el contenedor -->
+									<div class="w-44">
+										<select
+											class="form-input py-1.5"
+											[id]="'route-payment-' + client.id_client"
+											(change)="setPayment(client, $any($event.target).value)"
+										>
+											@for (option of paymentOptions; track option.value) {
+												<option [value]="option.value" [selected]="paymentOf(client) === option.value">{{ option.label }}</option>
+											}
+										</select>
+									</div>
+									@if (client.requires_electronic_invoice) {
+										<app-status-badge tone="pending" hint="Su factura es electrónica. Si hace falta, se cambia después en el detalle del pedido">
+											Factura electrónica
+										</app-status-badge>
+									}
+								</div>
+								@if (notice) {
+									<p class="mb-3 text-xs font-medium text-warning-700" role="status">{{ notice }}</p>
+								}
+
 								@if (lines.length > 0) {
 									<ul class="divide-y divide-slate-200 rounded-lg border border-slate-200" [class.mb-3]="removable.length > 0">
 										@for (line of lines; track line.product.id_product) {

@@ -28,6 +28,47 @@ export const ORDER_STATE_LABELS: Record<OrderState, string> = {
 	[OrderState.CANCELLED]: 'Cancelado',
 };
 
+// Cómo paga el cliente. Solo el efectivo en factura POS lleva CD y entra al consolidado del
+// cierre; el resto se factura aparte en Siigo. El crédito es informativo (sin cartera).
+export enum PaymentMethod {
+	CASH = 'CASH',
+	TRANSFER = 'TRANSFER',
+	CREDIT = 'CREDIT',
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+	[PaymentMethod.CASH]: 'Efectivo',
+	[PaymentMethod.TRANSFER]: 'Transferencia',
+	[PaymentMethod.CREDIT]: 'Crédito',
+};
+
+// Tipo de factura del pedido: sale del cliente (factura electrónica o no) y se puede cambiar
+// por pedido. Un cliente temporal siempre factura POS.
+export enum InvoiceType {
+	POS = 'POS',
+	ELECTRONIC = 'ELECTRONIC',
+}
+
+export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
+	[InvoiceType.POS]: 'POS',
+	[InvoiceType.ELECTRONIC]: 'Electrónica',
+};
+
+// Motivo (obligatorio) al cancelar un pedido; la cancelación en sí es de la vista del tablero
+export enum CancelReason {
+	WRONG_BILLING = 'WRONG_BILLING',
+	CLIENT_ABSENT = 'CLIENT_ABSENT',
+	DAMAGED_PRODUCT = 'DAMAGED_PRODUCT',
+	OTHER = 'OTHER',
+}
+
+export const CANCEL_REASON_LABELS: Record<CancelReason, string> = {
+	[CancelReason.WRONG_BILLING]: 'Mal facturado',
+	[CancelReason.CLIENT_ABSENT]: 'El cliente no estaba',
+	[CancelReason.DAMAGED_PRODUCT]: 'Producto dañado',
+	[CancelReason.OTHER]: 'Otro',
+};
+
 export enum DayWeek {
 	MONDAY = 1,
 	TUESDAY = 2,

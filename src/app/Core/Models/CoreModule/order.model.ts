@@ -4,7 +4,18 @@
 // Espejo de order_schema, order_detail_schema, order_history_schema y
 // route_order_schema (app/schemas/coreModule).
 
-import { IsoDate, IsoDateTime, Money, MoneyInput, OrderState, Page, TimeString } from '../Shared/api-types.model';
+import {
+	CancelReason,
+	InvoiceType,
+	IsoDate,
+	IsoDateTime,
+	Money,
+	MoneyInput,
+	OrderState,
+	Page,
+	PaymentMethod,
+	TimeString,
+} from '../Shared/api-types.model';
 import { NewClientInput } from './catalog.model';
 
 // ----- Respuestas -----
@@ -22,6 +33,11 @@ export interface Order {
 	dispatch_time: TimeString | null;
 	delivery_time: TimeString | null;
 	state: OrderState;
+	payment_method: PaymentMethod;
+	invoice_type: InvoiceType;
+	observations: string | null; // observación general del pedido
+	has_receipt: boolean; // lleva CD: solo POS + efectivo
+	items_updated_at: IsoDateTime | null; // última edición de los productos (null = nunca)
 }
 
 export interface OrderDetail {
@@ -48,6 +64,9 @@ interface OrderCreateBase {
 	delivery_date?: IsoDate | null; // sin enviar = hoy; programado: hoy o posterior, hasta 60 días
 	estimated_delivery?: TimeString | null;
 	id_user_vehicle?: number | null;
+	payment_method?: PaymentMethod; // sin enviar = efectivo
+	invoice_type?: InvoiceType; // sin enviar = el del cliente; un cliente temporal solo admite POS
+	observations?: string | null; // observación general, máx. 500
 	items: OrderItemInput[]; // al menos uno, sin productos repetidos
 }
 
@@ -65,10 +84,16 @@ export interface OrderCreateExistingClient extends OrderCreateBase {
 // - id_user_vehicle: asigna o cambia el domiciliario (null desasigna); hasta que el pedido sea final.
 // - estimated_delivery: hora estimada (null la quita); solo mientras el pedido está PENDING.
 // - delivery_date: día de entrega (no admite null); solo en PENDING. Cambiarlo asigna un PO nuevo del día de destino.
+// - payment_method / invoice_type: no admiten null; en PENDING y DISPATCHED. Un cliente temporal no pasa a ELECTRONIC
+//   (422 ELECTRONIC_INVOICE_NOT_ALLOWED).
+// - observations: observación general (null la borra); en PENDING y DISPATCHED.
 export interface OrderUpdate {
 	id_user_vehicle?: number | null;
 	estimated_delivery?: TimeString | null;
 	delivery_date?: IsoDate;
+	payment_method?: PaymentMethod;
+	invoice_type?: InvoiceType;
+	observations?: string | null;
 }
 
 // PUT /orders/{id}/items-order: lista FINAL deseada
@@ -115,13 +140,32 @@ export interface OrderDetailItem {
 export interface OrderFullDetail {
 	id_order: number;
 	purchase_order: string;
-	creation_datetime: IsoDateTime;
+	creation_datetime: IsoDateTime; // hora de Bogotá
+	creation_date: IsoDate; // día en que se tomó el pedido (puede ser distinto al de entrega)
+	creation_time: string; // "HH:MM" en que se tomó
 	delivery_date: IsoDate;
 	estimated_delivery: TimeString | null;
 	dispatch_time: TimeString | null;
 	delivery_time: TimeString | null;
 	state: OrderState;
 	order_total: Money;
+	// Facturación y observación
+	payment_method: PaymentMethod;
+	invoice_type: InvoiceType;
+	has_receipt: boolean; // lleva CD: solo POS + efectivo
+	observations: string | null;
+	// Ruta de la que se generó (null = pedido individual)
+	id_route: number | null;
+	route_name: string | null;
+	// Auditoría
+	taker_name: string; // quién registró el pedido
+	items_updater_name: string | null; // quién editó los productos por última vez (null = nadie)
+	items_updated_at: IsoDateTime | null; // cuándo (hora de Bogotá)
+	// Cancelación (solo con state = CANCELLED)
+	cancel_reason: CancelReason | null;
+	cancel_note: string | null;
+	cancelled_at: IsoDateTime | null;
+	canceller_name: string | null;
 	id_client: number; // para pedir el catálogo con los precios de este cliente
 	client_name: string;
 	client_phone: string | null;
@@ -142,8 +186,15 @@ export interface OrderHistoryQuery {
 	id_route?: number | null;
 	id_user_vehicle?: number | null;
 	search?: string | null; // nombre del cliente o N.° de pedido exacto
+	payment_method?: PaymentMethod | null;
+	invoice_type?: InvoiceType | null;
 	page?: number;
 	page_size?: number; // 1–200
+	// Orden en el servidor (por defecto: date ascendente). Campos válidos: date, purchase_order,
+	// client_name, zone_name, route_name, total_quantity, total, driver_name, state,
+	// payment_method e invoice_type; otro → 422 INVALID_SORT_FIELD
+	sort_by?: string | null;
+	sort_dir?: 'asc' | 'desc' | null;
 }
 
 export interface OrderHistoryRow {
@@ -160,6 +211,8 @@ export interface OrderHistoryRow {
 	driver_code: string | null;
 	driver_name: string | null;
 	state: OrderState;
+	payment_method: PaymentMethod;
+	invoice_type: InvoiceType;
 }
 
 // Página del histórico: Page<T> más el rango aplicado y el total vendido del filtro
@@ -198,6 +251,7 @@ export interface RouteTemplateClient {
 	address: string | null;
 	neighborhood_name: string;
 	zone_name: string;
+	requires_electronic_invoice: boolean; // sus pedidos salen con factura electrónica por defecto
 	products: RouteTemplateProduct[]; // vacío = sin precios pactados: no se le genera pedido
 	existing_order_id: number | null; // ya tiene pedido de hoy desde la ruta
 }
@@ -218,6 +272,9 @@ export interface RouteOrderItemInput {
 
 export interface RouteOrderClientInput {
 	id_client: number;
+	payment_method?: PaymentMethod; // sin enviar = efectivo
+	invoice_type?: InvoiceType; // sin enviar = el del cliente (requires_electronic_invoice)
+	observations?: string | null;
 	items: RouteOrderItemInput[];
 }
 

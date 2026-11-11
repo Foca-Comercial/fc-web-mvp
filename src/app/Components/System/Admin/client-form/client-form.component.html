@@ -81,6 +81,30 @@
 				<p class="form-error">{{ message }}</p>
 			}
 		</div>
+
+		<!-- Factura electrónica (informativo) -->
+		<div class="sm:col-span-2">
+			<label
+				for="client-electronic-invoice"
+				class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+			>
+				<input
+					id="client-electronic-invoice"
+					type="checkbox"
+					class="mt-0.5 size-4 shrink-0 cursor-pointer accent-brand-700"
+					[checked]="draft().requiresElectronicInvoice"
+					[disabled]="saving()"
+					(change)="patchDraft({ requiresElectronicInvoice: $any($event.target).checked })"
+				/>
+				<span>
+					<span class="block text-sm font-semibold text-slate-800">Se le hace factura electrónica</span>
+					<span class="block text-xs text-slate-500">
+						Sus pedidos salen con factura electrónica (no llevan CD y van a la hoja "Otras facturas" del cierre). Se puede cambiar en cada
+						pedido. Es informativo: la factura se hace en Siigo.
+					</span>
+				</span>
+			</label>
+		</div>
 	</div>
 
 	@if (!isEdit()) {

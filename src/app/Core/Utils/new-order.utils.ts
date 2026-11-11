@@ -1,14 +1,18 @@
 // ==================================================
 // Nuevo pedido: validación y armado de los bodies (lógica pura)
 // ==================================================
-// Dos formularios con la misma base (productos, día y hora de entrega, domiciliario):
+// Dos formularios con la misma base (productos, día y hora de entrega, domiciliario, pago,
+// factura y observación):
 //   - Cliente existente → POST /orders/existing-client { id_client, … }
 //   - Cliente nuevo     → POST /orders/new-client { client: { name, phone, address, id_neighborhood }, … }
-// El cliente nuevo se guarda como temporal: no aparece en la búsqueda de clientes registrados.
+// El cliente nuevo se guarda como temporal: no aparece en la búsqueda de clientes registrados
+// y su pedido siempre sale con factura POS.
 
 import { NewClientInput } from '@core/Models/CoreModule/catalog.model';
 import { OrderCreateExistingClient, OrderCreateNewClient } from '@core/Models/CoreModule/order.model';
 import { NeighborhoodDropdown } from '@core/Models/ParametersModule/parameters.model';
+import { InvoiceType, PaymentMethod } from '@core/Models/Shared/api-types.model';
+import { toObservations } from './billing.utils';
 import { toApiTime } from './date.utils';
 import { EditorLine, buildNewOrderItems } from './order-items.utils';
 import { normalizeText } from './text.utils';
@@ -82,6 +86,9 @@ export interface OrderExtras {
 	deliveryDate: string; // valor de <input type="date"> ("2026-10-29"); hoy si no se programa
 	deliveryTime: string; // valor de <input type="time"> ("14:05") o ''
 	driverId: number | null;
+	paymentMethod: PaymentMethod;
+	invoiceType: InvoiceType; // el del cliente, o el que el gestor eligió para este pedido
+	observations: string; // texto del campo; vacío = sin observación
 }
 
 export function buildExistingClientOrder(idClient: number, lines: readonly EditorLine[], extras: OrderExtras): OrderCreateExistingClient {
@@ -90,16 +97,24 @@ export function buildExistingClientOrder(idClient: number, lines: readonly Edito
 		delivery_date: extras.deliveryDate || null,
 		estimated_delivery: toApiTime(extras.deliveryTime),
 		id_user_vehicle: extras.driverId,
+		payment_method: extras.paymentMethod,
+		invoice_type: extras.invoiceType,
+		observations: toObservations(extras.observations),
 		items: buildNewOrderItems(lines),
 	};
 }
 
+// El cliente temporal solo admite factura POS (la API rechaza ELECTRONIC con
+// ELECTRONIC_INVOICE_NOT_ALLOWED), así que aquí se fija sin importar el valor recibido
 export function buildNewClientOrder(client: NewClientDraft, lines: readonly EditorLine[], extras: OrderExtras): OrderCreateNewClient {
 	return {
 		client: toNewClientInput(client),
 		delivery_date: extras.deliveryDate || null,
 		estimated_delivery: toApiTime(extras.deliveryTime),
 		id_user_vehicle: extras.driverId,
+		payment_method: extras.paymentMethod,
+		invoice_type: InvoiceType.POS,
+		observations: toObservations(extras.observations),
 		items: buildNewOrderItems(lines),
 	};
 }

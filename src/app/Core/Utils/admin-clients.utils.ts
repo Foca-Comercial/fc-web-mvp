@@ -18,9 +18,23 @@ export { activeToOption, optionToActive } from './admin-filters.utils';
 export type { Option } from './admin-filters.utils';
 
 // Por defecto se ven los activos; los inactivos se buscan con el filtro de estado
-export const DEFAULT_CLIENT_FILTERS: ClientAdminFilters = { search: '', active: true, id_zone: null };
+export const DEFAULT_CLIENT_FILTERS: ClientAdminFilters = { search: '', active: true, id_zone: null, electronic_invoice: null };
 
 export const CLIENT_STATUS_OPTIONS = STATUS_FILTER_OPTIONS;
+
+// Filtro de factura del cliente: electrónica o POS ('' = todos)
+export const ELECTRONIC_INVOICE_FILTER_OPTIONS: readonly Option[] = [
+	{ value: 'true', label: 'Electrónica' },
+	{ value: 'false', label: 'POS' },
+];
+
+export function invoiceToOption(electronic: boolean | null): string {
+	return electronic === null ? '' : String(electronic);
+}
+
+export function optionToInvoice(value: string): boolean | null {
+	return value === '' ? null : value === 'true';
+}
 
 export function zoneToOption(idZone: number | null): string {
 	return idToOption(idZone);
@@ -44,34 +58,47 @@ export function hasCustomFilters(filters: ClientAdminFilters): boolean {
 	return (
 		filters.search !== DEFAULT_CLIENT_FILTERS.search ||
 		filters.active !== DEFAULT_CLIENT_FILTERS.active ||
-		filters.id_zone !== DEFAULT_CLIENT_FILTERS.id_zone
+		filters.id_zone !== DEFAULT_CLIENT_FILTERS.id_zone ||
+		filters.electronic_invoice !== DEFAULT_CLIENT_FILTERS.electronic_invoice
 	);
 }
 
 // ----- Formulario (crear / editar) -----
-export function draftFromClient(client: ClientAdminRow | null): NewClientDraft {
-	if (!client) return { ...EMPTY_NEW_CLIENT };
+// El borrador del cliente nuevo del pedido más la marca de factura electrónica, que solo
+// tienen los clientes registrados
+export interface ClientAdminDraft extends NewClientDraft {
+	requiresElectronicInvoice: boolean;
+}
+
+export const EMPTY_CLIENT_DRAFT: ClientAdminDraft = { ...EMPTY_NEW_CLIENT, requiresElectronicInvoice: false };
+
+export function draftFromClient(client: ClientAdminRow | null): ClientAdminDraft {
+	if (!client) return { ...EMPTY_CLIENT_DRAFT };
 	return {
 		name: client.name,
 		phone: client.phone ?? '',
 		address: client.address ?? '',
 		idNeighborhood: client.id_neighborhood,
+		requiresElectronicInvoice: client.requires_electronic_invoice,
 	};
 }
 
-export function toClientAdminCreate(draft: NewClientDraft): ClientAdminCreate {
-	return toNewClientInput(draft);
+export function toClientAdminCreate(draft: ClientAdminDraft): ClientAdminCreate {
+	return { ...toNewClientInput(draft), requires_electronic_invoice: draft.requiresElectronicInvoice };
 }
 
 // Solo lo que cambió (PATCH parcial). La API guarda nombre y dirección en mayúsculas,
 // así que se comparan igual que quedarán guardados.
-export function clientChanges(client: ClientAdminRow, draft: NewClientDraft): ClientAdminUpdate {
+export function clientChanges(client: ClientAdminRow, draft: ClientAdminDraft): ClientAdminUpdate {
 	const next = toNewClientInput(draft);
 	const changes: ClientAdminUpdate = {};
 	if (next.name.toUpperCase() !== client.name) changes.name = next.name;
 	if ((next.phone ?? null) !== client.phone) changes.phone = next.phone ?? null;
 	if ((next.address?.toUpperCase() ?? null) !== client.address) changes.address = next.address ?? null;
 	if (next.id_neighborhood !== client.id_neighborhood) changes.id_neighborhood = next.id_neighborhood;
+	if (draft.requiresElectronicInvoice !== client.requires_electronic_invoice) {
+		changes.requires_electronic_invoice = draft.requiresElectronicInvoice;
+	}
 	return changes;
 }
 

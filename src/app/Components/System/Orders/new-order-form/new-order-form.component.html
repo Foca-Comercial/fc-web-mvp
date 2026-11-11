@@ -169,6 +169,45 @@
 			</div>
 		</section>
 
+		<!-- Pago y factura -->
+		<section aria-label="Pago y factura">
+			<h3 class="mb-2 text-sm font-bold uppercase tracking-wide text-brand-900">Pago y factura</h3>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div>
+					<label for="new-order-payment" class="form-label">Método de pago</label>
+					<select id="new-order-payment" class="form-input" [disabled]="saving()" (change)="setPayment($any($event.target).value)">
+						@for (option of paymentOptions; track option.value) {
+							<option [value]="option.value" [selected]="paymentMethod() === option.value">{{ option.label }}</option>
+						}
+					</select>
+				</div>
+				<div>
+					<label for="new-order-invoice" class="form-label">Tipo de factura</label>
+					<select
+						id="new-order-invoice"
+						class="form-input"
+						[disabled]="saving() || invoiceLocked()"
+						[attr.aria-describedby]="invoiceLocked() ? 'new-order-invoice-hint' : null"
+						(change)="setInvoice($any($event.target).value)"
+					>
+						@for (option of invoiceOptions; track option.value) {
+							<option [value]="option.value" [selected]="invoiceType() === option.value">{{ option.label }}</option>
+						}
+					</select>
+					@if (invoiceLocked()) {
+						<p id="new-order-invoice-hint" class="mt-1.5 text-xs text-slate-500">
+							Un cliente nuevo es temporal: su pedido siempre se factura POS.
+						</p>
+					} @else {
+						<p class="mt-1.5 text-xs text-slate-500">Viene de la ficha del cliente; si la cambias, vale solo para este pedido.</p>
+					}
+				</div>
+			</div>
+			@if (receiptNotice(); as notice) {
+				<p class="mt-2 text-xs font-medium text-warning-700" role="status">{{ notice }}</p>
+			}
+		</section>
+
 		<!-- Productos -->
 		<section aria-label="Productos del pedido">
 			<h3 class="mb-2 text-sm font-bold uppercase tracking-wide text-brand-900">Productos</h3>
@@ -179,6 +218,26 @@
 				</div>
 			} @else {
 				<app-order-items-editor [(lines)]="lines" [catalog]="catalog() ?? null" [disabled]="saving()" />
+			}
+		</section>
+
+		<!-- Observación general -->
+		<section aria-label="Observación del pedido">
+			<label for="new-order-observations" class="form-label">Observación (opcional)</label>
+			<textarea
+				id="new-order-observations"
+				rows="2"
+				class="form-input resize-y"
+				placeholder="Algo a tener en cuenta de este pedido"
+				[maxLength]="maxObservations"
+				[value]="observations()"
+				[disabled]="saving()"
+				[attr.aria-invalid]="observationsProblem() ? 'true' : null"
+				(input)="observations.set($any($event.target).value)"
+			></textarea>
+			<p class="mt-1 text-right text-xs tabular-nums text-slate-400">{{ observations().length }}/{{ maxObservations }}</p>
+			@if (observationsProblem(); as message) {
+				<p class="form-error">{{ message }}</p>
 			}
 		</section>
 	}

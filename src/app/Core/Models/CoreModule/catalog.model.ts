@@ -18,6 +18,8 @@ export interface ClientCreate {
 export type ClientUpdate = Partial<ClientCreate>;
 export interface Client extends Required<ClientCreate> {
 	id_client: number;
+	// Se le hace factura electrónica: precarga el tipo de factura de sus pedidos (GET /clients/search)
+	requires_electronic_invoice: boolean;
 }
 
 // Cliente que se crea dentro del pedido (POST /orders/new-client)
@@ -37,6 +39,9 @@ export interface ClientAdminCreate {
 	address?: string | null; // máx. 200
 	id_neighborhood: number; // barrio activo
 	active?: boolean;
+	// Se le hace factura electrónica (informativo, como los precios pactados): sus pedidos nacen
+	// con factura ELECTRONIC, que se puede cambiar por pedido. Sin enviar = false
+	requires_electronic_invoice?: boolean;
 }
 // PATCH parcial: solo lo que cambió. { active: false } desactiva, { active: true } reactiva
 export type ClientAdminUpdate = Partial<ClientAdminCreate>;
@@ -46,6 +51,7 @@ export interface ClientAdminFilters {
 	search: string; // nombre (contiene) o teléfono (empieza por); '' = sin filtro
 	active: boolean | null; // null = activos e inactivos
 	id_zone: number | null;
+	electronic_invoice: boolean | null; // null = con y sin factura electrónica
 }
 
 // Fila del listado; también es la respuesta de crear y editar
@@ -59,6 +65,7 @@ export interface ClientAdminRow {
 	id_zone: number;
 	zone_name: string;
 	active: boolean;
+	requires_electronic_invoice: boolean;
 	special_prices_count: number;
 	routes_count: number;
 }

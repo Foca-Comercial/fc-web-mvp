@@ -26,8 +26,9 @@
 			</div>
 		</div>
 
-		<div class="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+		<div class="grid gap-3 md:grid-cols-3 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
 			<app-search-input
+				class="md:col-span-3 xl:col-span-1"
 				placeholder="Buscar por nombre o teléfono"
 				ariaLabel="Buscar clientes por nombre o teléfono"
 				[value]="table.filters().search"
@@ -35,6 +36,13 @@
 			/>
 			<app-filter-select label="Zona" allLabel="Todas" [options]="zoneOptions()" [value]="zoneValue()" (valueChange)="setZone($event)" />
 			<app-filter-select label="Estado" allLabel="Todos" [options]="statusOptions" [value]="statusValue()" (valueChange)="setStatus($event)" />
+			<app-filter-select
+				label="Factura"
+				allLabel="Todas"
+				[options]="invoiceOptions"
+				[value]="invoiceValue()"
+				(valueChange)="setInvoice($event)"
+			/>
 		</div>
 	</div>
 
@@ -52,6 +60,7 @@
 						<th scope="col">TELÉFONO</th>
 						<th scope="col">BARRIO · ZONA</th>
 						<th scope="col">PRECIOS Y RUTAS</th>
+						<th scope="col">FACTURA</th>
 						<th scope="col">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
@@ -76,6 +85,13 @@
 									<span class="block text-xs text-slate-500">{{ row.zone_name }}</span>
 								</td>
 								<td class="text-sm text-slate-600">{{ linksSummary(row) }}</td>
+								<td>
+									@if (row.requires_electronic_invoice) {
+										<app-status-badge tone="pending" hint="Sus pedidos salen con factura electrónica por defecto">Electrónica</app-status-badge>
+									} @else {
+										<span class="text-slate-500">POS</span>
+									}
+								</td>
 								<td>
 									@if (row.active) {
 										<app-status-badge tone="done">Activo</app-status-badge>

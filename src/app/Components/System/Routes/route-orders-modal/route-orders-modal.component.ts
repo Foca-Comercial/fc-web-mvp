@@ -9,6 +9,8 @@
 // pedido desde la ruta. El precio lo pone el backend; otros productos o precios se
 // cambian después, editando el pedido en el tablero.
 // Hora estimada (precargada con la de salida) y domiciliario (opcional) aplican a todos.
+// El método de pago es por cliente (efectivo por defecto) y se ve si su factura es electrónica
+// (indicador: se toma de la ficha del cliente; se ajusta después en el detalle del pedido).
 // Al confirmar la alerta, crea en una sola petición los pedidos de los clientes con
 // productos (POST /orders/routes/{id}) y avisa con `(created)`.
 //
@@ -31,29 +33,35 @@ import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.componen
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
 import { DriverVehicleDropdown } from '@core/Models/CoreModule/catalog.model';
 import { RouteOrdersCreated, RouteOrderTemplate, RouteTemplateClient } from '@core/Models/CoreModule/order.model';
+import { PaymentMethod } from '@core/Models/Shared/api-types.model';
 import { NumericInputDirective } from '@core/Directives/numeric-input.directive';
 import { CopCurrencyPipe } from '@core/Pipes/cop-currency.pipe';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { parseApiError } from '@core/Utils/api-error.utils';
+import { PAYMENT_OPTIONS, noReceiptNotice, toPaymentMethod } from '@core/Utils/billing.utils';
 import { formatCop } from '@core/Utils/money.utils';
 import { formatDepartureTime, RouteDayCard } from '@core/Utils/route-board.utils';
 import {
 	addProduct,
 	buildRouteOrderDrafts,
 	buildRouteOrdersPayload,
+	clientInvoiceType,
 	clientLines,
 	draftsTotal,
 	hasMissingQuantity,
 	orderableClients,
+	paymentOf,
 	removedProducts,
 	removeProduct,
 	RouteExclusions,
 	RouteOrderLine,
 	routeOrdersConfirmHtml,
+	RoutePayments,
 	RouteSelections,
 	selectionsFromTemplate,
+	setClientPayment,
 	setProductQuantity,
 } from '@core/Utils/route-orders.utils';
 
@@ -143,6 +151,12 @@ export class RouteOrdersModalComponent {
 		source: this.template,
 		computation: () => new Set<number>(),
 	});
+	// Método de pago por cliente; el que no aparece paga en efectivo
+	protected readonly payments = linkedSignal<RouteOrderTemplate | null, RoutePayments>({
+		source: this.template,
+		computation: () => ({}),
+	});
+	protected readonly paymentOptions = PAYMENT_OPTIONS;
 	protected readonly deliveryTime = linkedSignal(() => this.template()?.departure_time.slice(0, 5) ?? '');
 	protected readonly driverId = linkedSignal<RouteOrderTemplate | null, number | null>({
 		source: this.template,
@@ -160,7 +174,7 @@ export class RouteOrdersModalComponent {
 	});
 	protected readonly drafts = computed(() => {
 		const template = this.template();
-		return template ? buildRouteOrderDrafts(template, this.selections(), this.excluded()) : [];
+		return template ? buildRouteOrderDrafts(template, this.selections(), this.excluded(), this.payments()) : [];
 	});
 	protected readonly allHaveOrders = computed(() => (this.template()?.clients ?? []).every((client) => client.existing_order_id !== null));
 	protected readonly total = computed(() => draftsTotal(this.drafts()));
@@ -223,6 +237,15 @@ export class RouteOrdersModalComponent {
 		return this.clientTotals().get(client.id_client) ?? 0;
 	}
 
+	protected paymentOf(client: RouteTemplateClient): PaymentMethod {
+		return paymentOf(this.payments(), client.id_client);
+	}
+
+	// Aviso de que el pedido no llevará CD (pago distinto de efectivo o factura electrónica)
+	protected receiptNotice(client: RouteTemplateClient): string | null {
+		return noReceiptNotice(this.paymentOf(client), clientInvoiceType(client));
+	}
+
 	// ----- Edición -----
 	// "Incluir" marcado = se le crea pedido; desmarcado = "No pidió hoy" (se conserva su lista)
 	protected setIncluded(client: RouteTemplateClient, included: boolean): void {
@@ -253,6 +276,10 @@ export class RouteOrdersModalComponent {
 
 	protected setDriver(value: string): void {
 		this.driverId.set(value ? Number(value) : null);
+	}
+
+	protected setPayment(client: RouteTemplateClient, value: string): void {
+		this.payments.update((current) => setClientPayment(current, client.id_client, toPaymentMethod(value)));
 	}
 
 	protected retry(): void {

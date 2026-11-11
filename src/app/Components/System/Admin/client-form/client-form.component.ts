@@ -4,7 +4,9 @@
 // Formulario de cliente registrado del panel de administración: crea
 // (POST /clients/admin) o edita (PATCH /clients/admin/{id}, solo lo que cambió).
 // Mismas reglas que el cliente nuevo del pedido (new-order.utils): nombre obligatorio,
-// teléfono de 10 dígitos, dirección opcional y barrio.
+// teléfono de 10 dígitos, dirección opcional y barrio. Además, la marca de factura electrónica:
+// informativa (el sistema no la emite, se factura en Siigo); sus pedidos nacen con factura
+// electrónica y se puede cambiar en cada pedido.
 //
 // Se monta solo mientras el modal está abierto, así cada vez arranca con los datos del
 // cliente (o en blanco). Los barrios llegan desde la vista (se cargan una sola vez).
@@ -21,12 +23,18 @@ import { NumericInputDirective } from '@core/Directives/numeric-input.directive'
 import { ClientAdminRow } from '@core/Models/CoreModule/catalog.model';
 import { NeighborhoodDropdown } from '@core/Models/ParametersModule/parameters.model';
 import { ClientService } from '@core/Service/CoreModule/client.service';
-import { clientChanges, draftFromClient, hasChanges, neighborhoodChoices, toClientAdminCreate } from '@core/Utils/admin-clients.utils';
+import {
+	ClientAdminDraft,
+	clientChanges,
+	draftFromClient,
+	hasChanges,
+	neighborhoodChoices,
+	toClientAdminCreate,
+} from '@core/Utils/admin-clients.utils';
 import { describeApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
 import {
 	MAX_CLIENT_ADDRESS_LENGTH,
 	MAX_CLIENT_NAME_LENGTH,
-	NewClientDraft,
 	PHONE_DIGITS,
 	hasErrors,
 	neighborhoodLabel,
@@ -55,7 +63,7 @@ export class ClientFormComponent {
 	protected readonly neighborhoodLabel = neighborhoodLabel;
 
 	protected readonly isEdit = computed(() => this.client() !== null);
-	protected readonly draft = linkedSignal<NewClientDraft>(() => draftFromClient(this.client()));
+	protected readonly draft = linkedSignal<ClientAdminDraft>(() => draftFromClient(this.client()));
 	protected readonly errors = computed(() => newClientErrors(this.draft()));
 	protected readonly choices = computed(() => {
 		const list = this.neighborhoods();
@@ -76,7 +84,7 @@ export class ClientFormComponent {
 	protected readonly saving = signal(false);
 	protected readonly serverErrors = signal<string[]>([]);
 
-	protected patchDraft(patch: Partial<NewClientDraft>): void {
+	protected patchDraft(patch: Partial<ClientAdminDraft>): void {
 		this.draft.update((draft) => ({ ...draft, ...patch }));
 	}
 

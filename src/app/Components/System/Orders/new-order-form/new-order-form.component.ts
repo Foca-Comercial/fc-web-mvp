@@ -2,7 +2,7 @@
 // Componente: <app-new-order-form>
 // ==================================================
 // Registro de un pedido nuevo, con dos formularios distintos que comparten lo demás
-// (fecha y hora de entrega, domiciliario y productos). La fecha de entrega es hoy por defecto;
+// (fecha y hora de entrega, domiciliario, pago, factura, productos y observación). La fecha de entrega es hoy por defecto;
 // con otra fecha (hasta 60 días adelante) el pedido queda programado y solo aparece en el
 // tablero ese día:
 //   - Cliente existente: se busca entre los clientes registrados → POST /orders/existing-client.
@@ -10,6 +10,9 @@
 //     (el cliente queda como temporal).
 // Los productos salen de GET /products/catalog: con el cliente existente entran con SUS precios
 // pactados; con un cliente nuevo, con el precio base. En ambos casos el precio se puede cambiar.
+// Pago: efectivo por defecto (o transferencia / crédito). Factura: la del cliente (electrónica si
+// se le hace factura electrónica, si no POS), editable por pedido; el cliente nuevo es temporal y
+// siempre factura POS. Solo POS + efectivo lleva CD: con otra combinación se avisa.
 //
 // Se monta solo mientras el modal está abierto (ver new-order-modal), así cada vez empieza
 // en blanco. Los errores van en línea porque esto vive dentro de un <dialog> modal.
@@ -24,12 +27,23 @@ import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.componen
 import { NumericInputDirective } from '@core/Directives/numeric-input.directive';
 import { Client, ProductCatalogItem } from '@core/Models/CoreModule/catalog.model';
 import { OrderWithDetails } from '@core/Models/CoreModule/order.model';
+import { InvoiceType, PaymentMethod } from '@core/Models/Shared/api-types.model';
 import { ClientService } from '@core/Service/CoreModule/client.service';
 import { OrderService } from '@core/Service/CoreModule/order.service';
 import { ProductService } from '@core/Service/CoreModule/product.service';
 import { UserVehicleService } from '@core/Service/CoreModule/user-vehicle.service';
 import { NeighborhoodService } from '@core/Service/ParametersModule/neighborhood.service';
 import { describeApiError, parseApiErrorAsync } from '@core/Utils/api-error.utils';
+import {
+	INVOICE_OPTIONS,
+	MAX_OBSERVATIONS_LENGTH,
+	PAYMENT_OPTIONS,
+	defaultInvoiceType,
+	noReceiptNotice,
+	observationsError,
+	toInvoiceType,
+	toPaymentMethod,
+} from '@core/Utils/billing.utils';
 import { todayBogota } from '@core/Utils/date.utils';
 import {
 	EMPTY_NEW_CLIENT,
@@ -101,6 +115,23 @@ export class NewOrderFormComponent {
 	protected readonly deliveryTime = signal('');
 	protected readonly driverId = signal<number | null>(null);
 
+	// Pago y factura. La factura arranca con la del cliente elegido (cliente nuevo: POS) y se
+	// puede cambiar solo para este pedido; al cambiar de cliente o de formulario vuelve a la suya.
+	protected readonly paymentOptions = PAYMENT_OPTIONS;
+	protected readonly invoiceOptions = INVOICE_OPTIONS;
+	protected readonly maxObservations = MAX_OBSERVATIONS_LENGTH;
+	protected readonly paymentMethod = signal<PaymentMethod>(PaymentMethod.CASH);
+	protected readonly invoiceType = linkedSignal<{ mode: OrderMode; client: Client | null }, InvoiceType>({
+		source: () => ({ mode: this.mode(), client: this.client() }),
+		computation: ({ mode, client }) =>
+			mode === 'new' ? InvoiceType.POS : defaultInvoiceType(client?.requires_electronic_invoice ?? false),
+	});
+	// El cliente temporal (formulario "nuevo") siempre factura POS
+	protected readonly invoiceLocked = computed(() => this.mode() === 'new');
+	protected readonly receiptNotice = computed(() => noReceiptNotice(this.paymentMethod(), this.invoiceType()));
+	protected readonly observations = signal('');
+	protected readonly observationsProblem = computed(() => observationsError(this.observations()));
+
 	// Catálogo: con cliente existente, con SUS precios; con cliente nuevo, precios base.
 	// [] mientras no hay cliente elegido (el editor no se muestra todavía).
 	protected readonly catalog = toSignal<readonly ProductCatalogItem[] | null | undefined>(
@@ -135,7 +166,7 @@ export class NewOrderFormComponent {
 	protected readonly canSubmit = computed(() => {
 		if (this.saving()) return false;
 		const clientOk = this.mode() === 'existing' ? this.client() !== null : !hasErrors(this.clientErrors());
-		return clientOk && this.dateError() === null && this.itemsError() === null;
+		return clientOk && this.dateError() === null && this.itemsError() === null && this.observationsProblem() === null;
 	});
 
 	protected setMode(mode: OrderMode): void {
@@ -157,11 +188,26 @@ export class NewOrderFormComponent {
 		this.driverId.set(value ? Number(value) : null);
 	}
 
+	protected setPayment(value: string): void {
+		this.paymentMethod.set(toPaymentMethod(value));
+	}
+
+	protected setInvoice(value: string): void {
+		this.invoiceType.set(toInvoiceType(value));
+	}
+
 	protected async submit(): Promise<void> {
 		this.submitted.set(true);
 		if (!this.canSubmit()) return;
 
-		const extras = { deliveryDate: this.deliveryDate(), deliveryTime: this.deliveryTime(), driverId: this.driverId() };
+		const extras = {
+			deliveryDate: this.deliveryDate(),
+			deliveryTime: this.deliveryTime(),
+			driverId: this.driverId(),
+			paymentMethod: this.paymentMethod(),
+			invoiceType: this.invoiceType(),
+			observations: this.observations(),
+		};
 		const client = this.client();
 		this.saving.set(true);
 		this.serverErrors.set([]);

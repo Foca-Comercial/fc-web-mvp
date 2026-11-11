@@ -55,6 +55,15 @@ export const FIELD_LABELS: Record<string, string> = {
 	search: 'Búsqueda',
 	page: 'Página',
 	page_size: 'Tamaño de página',
+	sort_by: 'Orden',
+	sort_dir: 'Dirección del orden',
+	payment_method: 'Método de pago',
+	invoice_type: 'Tipo de factura',
+	observations: 'Observación',
+	cancel_reason: 'Motivo de cancelación',
+	cancel_note: 'Nota de cancelación',
+	requires_electronic_invoice: 'Factura electrónica',
+	electronic_invoice: 'Factura electrónica',
 
 	// Archivado
 	spreadsheet: 'Spreadsheet de Google',
