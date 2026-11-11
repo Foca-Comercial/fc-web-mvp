@@ -32,6 +32,15 @@
 //
 // Tras crear, editar o eliminar un registro: `table.reload()`.
 // La búsqueda ya llega con debounce desde <app-search-input>.
+//
+// Orden en el servidor (opcional): la tabla guarda `sort` y lo manda como `sort_by` y
+// `sort_dir`. Se cambia con `toggleSort(campo)` desde <th app-sort-header>; con la opción
+// `sort` la tabla arranca con ese orden y vuelve a él al terminar el ciclo asc → desc.
+//
+//   <th app-sort-header sortKey="client_name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Cliente</th>
+//
+// Si no hay orden (`sort` null) esos dos parámetros no se envían y manda el de la API.
+// Cambiar el orden vuelve a la página 1.
 
 import { computed, inject, linkedSignal, signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
@@ -40,8 +49,9 @@ import { catchError, map, Observable, of, switchMap } from 'rxjs';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
 import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { BOARD_PAGE_SIZE } from '@core/Utils/order-board.utils';
+import { SortRequest, TableSort, nextTableSort, toSortRequest } from '@core/Utils/table-sort.utils';
 
-export type ServerTableQuery<F extends object> = F & PageRequest;
+export type ServerTableQuery<F extends object> = F & PageRequest & SortRequest;
 
 // P: la respuesta de la API. Por defecto Page<T>; una vista puede usar un tipo que la
 // extienda con datos propios (p. ej. el histórico trae el total de ventas del filtro).
@@ -51,6 +61,8 @@ export interface ServerTableOptions<F extends object, T, P extends Page<T> = Pag
 	// Filtros iniciales; también son los que restaura resetFilters()
 	filters: F;
 	pageSize?: number;
+	// Orden inicial y al que se vuelve tras el ciclo asc → desc. Sin él, la API usa el suyo.
+	sort?: TableSort | null;
 	// Título de la alerta si falla la carga
 	errorTitle?: string;
 }
@@ -66,6 +78,8 @@ export class ServerTable<F extends object, T, P extends Page<T> = Page<T>> {
 	readonly pageSize: WritableSignal<number>;
 	// Vuelve a 1 cuando cambian los filtros o el tamaño de página
 	readonly page: WritableSignal<number>;
+	// Orden en el servidor (null = el de la API)
+	readonly sort: WritableSignal<TableSort | null>;
 
 	// ----- Lo que responde la API -----
 	readonly data = signal<P | null>(null);
@@ -86,14 +100,15 @@ export class ServerTable<F extends object, T, P extends Page<T> = Page<T>> {
 		this.options = options;
 		this.filters = signal(options.filters);
 		this.pageSize = signal(options.pageSize ?? BOARD_PAGE_SIZE);
-		this.page = linkedSignal<readonly [F, number], number>({
-			source: () => [this.filters(), this.pageSize()] as const,
+		this.sort = signal(options.sort ?? null);
+		this.page = linkedSignal<readonly [F, number, TableSort | null], number>({
+			source: () => [this.filters(), this.pageSize(), this.sort()] as const,
 			computation: () => 1,
 		});
 
 		// Cada cambio de filtros, página, tamaño o reload() pide la página otra vez
 		const request = computed(() => ({
-			query: { ...this.filters(), page: this.page(), page_size: this.pageSize() } as ServerTableQuery<F>,
+			query: { ...this.filters(), page: this.page(), page_size: this.pageSize(), ...toSortRequest(this.sort()) } as ServerTableQuery<F>,
 			tick: this.reloadTick(),
 		}));
 
@@ -120,6 +135,12 @@ export class ServerTable<F extends object, T, P extends Page<T> = Page<T>> {
 			next[key] = value;
 			return next;
 		});
+	}
+
+	// Clic en un encabezado: asc → desc → orden por defecto (`options.sort`). Ordenar no es un
+	// filtro, así que resetFilters() no lo toca.
+	toggleSort(key: string): void {
+		this.sort.update((current) => nextTableSort(current, key, this.options.sort ?? null));
 	}
 
 	resetFilters(): void {

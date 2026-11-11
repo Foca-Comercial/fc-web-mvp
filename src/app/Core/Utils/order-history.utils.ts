@@ -1,27 +1,43 @@
 // ==================================================
 // Vista Histórico de pedidos (lógica pura)
 // ==================================================
-// La API filtra y pagina (GET /orders/history); aquí se arman los filtros de la pantalla,
-// las opciones de los <select> y el color de cada estado. Las fechas son días de entrega
-// ("AAAA-MM-DD", calendario de Bogotá).
+// La API filtra, ordena y pagina (GET /orders/history); aquí se arman los filtros de la
+// pantalla, el orden por defecto, las opciones de los <select> y el color de cada estado.
+// Las fechas son días de entrega ("AAAA-MM-DD", calendario de Bogotá).
 
 import { DriverVehicleDropdown } from '@core/Models/CoreModule/catalog.model';
-import { IsoDate, ORDER_STATE_LABELS, OrderState } from '@core/Models/Shared/api-types.model';
+import { InvoiceType, IsoDate, ORDER_STATE_LABELS, OrderState, PaymentMethod } from '@core/Models/Shared/api-types.model';
 import type { BadgeTone } from '@components/Shared/status-badge/status-badge.component';
 import { Option } from './admin-filters.utils';
+import { toInvoiceType, toPaymentMethod } from './billing.utils';
+import { TableSort } from './table-sort.utils';
 
 // Mismos nombres que los query params de la API: van directo a OrderService.getHistory
 export interface HistoryFilters {
 	search: string; // nombre del cliente o consecutivo (PO) exacto
 	state: OrderState | null;
 	id_user_vehicle: number | null;
+	payment_method: PaymentMethod | null;
+	invoice_type: InvoiceType | null;
 	date_from: IsoDate;
 	date_to: IsoDate;
 }
 
+// Orden por defecto del histórico (el mismo de la API): por día de entrega, del más antiguo al
+// más reciente. Es también al que vuelve el ciclo de un encabezado (asc → desc → este).
+export const HISTORY_DEFAULT_SORT: TableSort = { key: 'date', direction: 'asc' };
+
 // Por defecto, el mismo rango que usa la API: del 1 del mes anterior a hoy
 export function defaultHistoryFilters(today: IsoDate): HistoryFilters {
-	return { search: '', state: null, id_user_vehicle: null, date_from: firstDayOfPreviousMonth(today), date_to: today };
+	return {
+		search: '',
+		state: null,
+		id_user_vehicle: null,
+		payment_method: null,
+		invoice_type: null,
+		date_from: firstDayOfPreviousMonth(today),
+		date_to: today,
+	};
 }
 
 // "2026-01-20" → "2025-12-01"
@@ -58,6 +74,14 @@ export function stateToOption(state: OrderState | null): string {
 
 export function optionToState(value: string): OrderState | null {
 	return value === '' ? null : (value as OrderState);
+}
+
+export function optionToPayment(value: string): PaymentMethod | null {
+	return value === '' ? null : toPaymentMethod(value);
+}
+
+export function optionToInvoice(value: string): InvoiceType | null {
+	return value === '' ? null : toInvoiceType(value);
 }
 
 // "011 · Juan Beltrán", ordenados por código

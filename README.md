@@ -80,7 +80,7 @@ src/app/
 │       ├── Closure/closure-board/  # Cierre y reportes del día (construido)
 │       ├── Admin/                  # Panel de administración (admin.routes.ts + una carpeta por
 │       │                           #   subsección: Clients, Products, Drivers, Vehicles, Routes, Archive)
-│       └── History/                # vista por construir (ComingSoon mientras tanto)
+│       └── History/history-board/  # Histórico de pedidos (construido)
 ├── app.config.ts               # providers: router, http + interceptor, locale es-CO, restaurar sesión
 └── app.routes.ts
 ```
@@ -193,6 +193,22 @@ protected readonly table = new ServerTable({
   `failed` solo si nunca se cargó nada. Tras crear, editar o eliminar: `table.reload()`.
 - Se crea en un inicializador de campo del componente (necesita contexto de inyección).
 
+**Orden en el servidor (opcional).** La tabla guarda `sort` y lo manda como `sort_by` y
+`sort_dir` (`table-sort.utils`); si no hay orden, esos parámetros no se envían y manda el de
+la API. La `key` del orden es el campo que la API acepta en `sort_by` (`client_name`, `total`…),
+así no hay tabla de equivalencias. Los encabezados se cablean con `<th app-sort-header>`
+(`Components/Shared/sort-header`):
+
+```html
+<th app-sort-header sortKey="client_name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Cliente</th>
+```
+
+Cada clic recorre ascendente → descendente → orden por defecto (la opción `sort` de
+`ServerTable`, p. ej. `{ key: 'date', direction: 'asc' }`; sin ella, el de la API). Cambiar el
+orden vuelve a la página 1 y «Limpiar filtros» no lo toca. Un campo que la API no acepta
+responde 422 `INVALID_SORT_FIELD`. Los listados del tablero y del cierre (que ordenan en el
+cliente) siguen con sus botones propios y `nextSort`.
+
 ### Fechas
 Todo "hoy" se calcula en hora de Bogotá con `todayBogota()` (`Core/Utils/date.utils.ts`),
 nunca con `new Date().toISOString()` (UTC).
@@ -222,6 +238,7 @@ filtrar, paginar y agrupar vive en funciones puras de `Core/Utils/*-board.utils.
 |---|---|---|---|
 | Tablero de despachos | `/pedidos` | `GET /orders/dashboard-summary` y `/dispatched-summary` (día completo) | Filtros y paginación en el cliente (selector «Mostrar N por página»: 10 por defecto, 25, 50, 100 o 200; `PAGE_SIZE_OPTIONS`); barra superior en dos filas (búsqueda + refrescar + Nuevo pedido, y debajo los tres filtros); se refresca cada minuto. "Próximo" y "Retrasado" se calculan en el front con `estimated_delivery` (`delivery-status.utils`). Las columnas PO, Hora, Cliente y Domiciliario (por código) se ordenan con clic en el encabezado (ascendente → descendente → orden original; ver `sortOrders`). Al registrar un pedido se ofrece registrar otro. **Pedidos programados:** el selector de día de la barra superior va de hoy a +60 días (`schedule.utils`); un día futuro muestra los pedidos con `delivery_date` de ese día («Programado», sin Próximo/Retrasado) y no se pueden despachar hasta su día (`orderCapabilities(state, scheduled)`; la API responde 422 `ORDER_SCHEDULED`). «Nuevo pedido» lleva el campo «Fecha de entrega» (hoy por defecto, o el día que se está viendo; `POST …` con `delivery_date`) y «Editar pedido» permite cambiarla en PENDING (`PATCH` con `delivery_date`; el pedido recibe un PO nuevo del día de destino). El detalle muestra la fecha de entrega. Acciones por fila según el estado (`order-actions.utils`): despachar (`POST /orders/{id}/dispatch`, con o sin domiciliario) y luego ofrece imprimir el CD; entregar (`POST /orders/{id}/deliver`). El detalle cambia el domiciliario (`PATCH /orders/{id}`) y reimprime el CD (`GET /orders/{id}/receipt`, se abre en otra pestaña con `OrderReceiptService`). "Editar pedido" (solo PENDING, dentro del detalle): hora estimada (`PATCH`) y productos (`PUT /orders/{id}/items-order`) con `<app-order-items-editor>`; el catálogo sale de `GET /products/catalog?id_client=` y cada producto entra con el precio pactado del cliente, editable. "Nuevo pedido" (`new-order-modal` → `new-order-form`): dos formularios, **cliente existente** (busca entre registrados con `GET /clients/search?name=` → `POST /orders/existing-client`, catálogo con SUS precios) y **cliente nuevo** (nombre, teléfono de 10 dígitos, dirección y barrio de `GET /neighborhoods/dropdown` → `POST /orders/new-client`, queda como temporal y entra con precios base). Ambos: hora estimada y domiciliario opcionales; los errores de la API salen en línea. **Pago, factura y observación** (`billing.utils`): método de pago (efectivo por defecto, transferencia o crédito), tipo de factura (POS o electrónica) y observación general opcional (máx. 500). La factura arranca con la del cliente (`requires_electronic_invoice` de `GET /clients/search`) y se puede cambiar solo para ese pedido; el cliente nuevo es temporal y siempre POS (el campo va fijo). Solo POS + efectivo lleva CD: con otra combinación el formulario avisa que no lo llevará (`noReceiptNotice`, espejo de `Order.has_receipt`; la API decide). **Detalle del pedido:** muestra quién lo registró y cuándo, la ruta, la última edición de productos (quién y cuándo) y, si está cancelado, motivo, nota, quién y cuándo. El bloque «Pago y factura» (método, tipo de factura y observación; `order-detail.utils`) se edita en PENDING y DESPACHADO con su propio «Guardar» (`PATCH /orders/{id}`, solo lo que cambió; la observación vacía se envía como `null`) y queda solo lectura en entregado, cancelado y en el histórico (`canEditBilling`). «Reimprimir CD» solo aparece si el pedido lleva CD (`has_receipt`). |
 | Cierre y reportes | `/cierre` | `GET /shifts_closures/summary?target_date=` y `POST /shifts_closures/{fecha}/export` (descarga el .xlsx para Siigo) | Hoy por defecto, con selector para días anteriores (no futuros). Cards: fecha y estado de la exportación, total de pedidos (completados = despachados + entregados, pendientes, cancelados), vendedores del día e ingresos. Tabla por vendedor con búsqueda, orden por columna y paginación en el cliente con el mismo selector de tamaño de página (`closure-board.utils`). Exportar confirma, avisa si hay pendientes (no se facturan) y se vuelve "Reexportar" cuando ya se exportó. |
+| Histórico | `/historico` | `GET /orders/history` (paginado y ordenado en la API) | `ServerTable` con orden por día de entrega ascendente. Filtros: búsqueda (cliente o PO exacto), estado, domiciliario, **método de pago**, **tipo de factura** y rango de fechas (del 1 del mes anterior a hoy por defecto). Columnas: **N°** (contador de filas `table.firstRowNumber() + i`; el id interno del pedido no se muestra), **PO y fecha**, Cliente (zona · ruta), Producto, Domiciliario, **Pago**, **Factura**, Valor y Estado; se ordenan por fecha, cliente, domiciliario, pago, factura, valor y estado. El pie muestra el total vendido del filtro (sin cancelados). «Ver» abre el detalle en solo lectura (`<app-order-detail-modal readonly>`). |
 | Rutas | `/rutas` | `GET /orders/routes-of-day` y `GET /routes/cards` (ya con nombres y zonas de clientes) | "Vista principal" crea los pedidos del día de la ruta (`POST /orders/routes/{id}`); el precio lo pone la API (el pactado del cliente). Cada cliente trae su **método de pago** (efectivo por defecto; `payment_method` por cliente en el POST) y un indicador «Factura electrónica» si su ficha la marca (`requires_electronic_invoice` de la plantilla; la API usa esa factura, se ajusta después en el detalle del pedido). Se avisa qué pedidos no llevarán CD. El detalle pide `GET /routes/{id}/clients` al abrirse. |
 
 ### Componentes compartidos con reglas propias

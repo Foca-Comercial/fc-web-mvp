@@ -26,6 +26,22 @@
 				[value]="driverValue()"
 				(valueChange)="setDriver($event)"
 			/>
+			<app-filter-select
+				class="w-full sm:w-66"
+				label="Pago"
+				allLabel="Todos"
+				[options]="paymentOptions"
+				[value]="paymentValue()"
+				(valueChange)="setPayment($event)"
+			/>
+			<app-filter-select
+				class="w-full sm:w-66"
+				label="Factura"
+				allLabel="Todas"
+				[options]="invoiceOptions"
+				[value]="invoiceValue()"
+				(valueChange)="setInvoice($event)"
+			/>
 		</div>
 	</div>
 
@@ -50,18 +66,20 @@
 		<app-data-table>
 			<table>
 				<caption class="sr-only">
-					Pedidos entregados entre el {{ table.filters().date_from | bogotaDate: dateFormat }} y el
+					Pedidos entre el {{ table.filters().date_from | bogotaDate: dateFormat }} y el
 					{{ table.filters().date_to | bogotaDate: dateFormat }}
 				</caption>
 				<thead>
 					<tr>
-						<th scope="col">PO</th>
-						<th scope="col">PEDIDO Y FECHA</th>
-						<th scope="col">CLIENTE</th>
+						<th scope="col">N°</th>
+						<th app-sort-header sortKey="date" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">PO y fecha</th>
+						<th app-sort-header sortKey="client_name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Cliente</th>
 						<th scope="col">PRODUCTO</th>
-						<th scope="col">DOMICILIARIO</th>
-						<th scope="col">VALOR</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="driver_name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Domiciliario</th>
+						<th app-sort-header sortKey="payment_method" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Pago</th>
+						<th app-sort-header sortKey="invoice_type" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Factura</th>
+						<th app-sort-header sortKey="total" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Valor</th>
+						<th app-sort-header sortKey="state" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">Estado</th>
 						<th scope="col">VER</th>
 					</tr>
 				</thead>
@@ -69,16 +87,20 @@
 					<tbody app-table-skeleton [rows]="8" [columns]="columnCount"></tbody>
 				} @else {
 					<tbody [class.opacity-60]="table.refreshing()" [attr.aria-busy]="table.refreshing()">
-						@for (row of table.items(); track row.id_order) {
+						@for (row of table.items(); track row.id_order; let i = $index) {
 							<tr>
-								<td class="font-semibold tabular-nums text-slate-600">{{ row.purchase_order }}</td>
+								<td class="font-bold tabular-nums text-slate-500">{{ (table.firstRowNumber() + i).toString().padStart(3, '0') }}</td>
 								<td>
-									<span class="block font-semibold tabular-nums text-slate-900">{{ row.id_order }}</span>
+									<span class="block font-semibold tabular-nums text-slate-900">{{ row.purchase_order }}</span>
 									<span class="block text-xs tabular-nums text-slate-500">{{ row.order_date | bogotaDate: dateFormat }}</span>
 								</td>
 								<td>
 									<span class="block font-semibold text-slate-900">{{ row.client_name }}</span>
-									<span class="block text-xs text-slate-500">{{ row.zone_name }}</span>
+									<span class="block text-xs text-slate-500">
+										{{ row.zone_name }}@if (row.route_name) {
+											· {{ row.route_name }}
+										}
+									</span>
 								</td>
 								<td>
 									<span class="mx-auto block max-w-52 truncate font-semibold text-slate-900" [title]="row.product_codes">
@@ -94,6 +116,8 @@
 										<span class="text-slate-500">Sin asignar</span>
 									}
 								</td>
+								<td class="whitespace-nowrap">{{ paymentLabels[row.payment_method] }}</td>
+								<td class="whitespace-nowrap">{{ invoiceLabels[row.invoice_type] }}</td>
 								<td class="whitespace-nowrap font-semibold tabular-nums text-slate-900">
 									@if (row.order_total !== null) {
 										{{ row.order_total | cop }} COP
@@ -134,7 +158,7 @@
 					<app-empty-state
 						icon="magnifying-glass"
 						title="Ningún pedido coincide con los filtros"
-						description="Prueba con otras fechas, otro estado o quita la búsqueda."
+						description="Prueba con otras fechas, otros filtros o quita la búsqueda."
 					>
 						<button type="button" class="btn-secondary" (click)="clearFilters()">Limpiar filtros</button>
 					</app-empty-state>
