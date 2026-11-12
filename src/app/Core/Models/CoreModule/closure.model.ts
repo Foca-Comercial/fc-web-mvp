@@ -23,15 +23,31 @@ export interface ClosureProduct {
 	quantity: number;
 }
 
+// Ventas por tipo de factura y método de pago (las columnas del cuadre de caja)
+export interface ClosureCategoryTotals {
+	pos_cash: Money; // POS en efectivo: la factura global
+	electronic_cash: Money;
+	pos_transfer: Money;
+	electronic_transfer: Money;
+	pos_credit: Money; // el crédito es informativo (sin cartera)
+	electronic_credit: Money;
+}
+
 export interface ClosureSellerRow {
 	id_user_vehicle: number;
 	seller_code: number; // sin ceros a la izquierda (Siigo)
 	seller_name: string;
+	// Factura global: solo POS + efectivo (vacía si el vendedor solo tuvo otras facturas)
 	products: ClosureProduct[];
-	total_quantity: number;
-	orders_count: number;
+	total_quantity: number; // unidades de la factura global
+	consolidated_total: Money; // total de la factura global
+	// Todas las ventas del vendedor
+	orders_count: number; // pedidos facturables, todas las categorías
+	other_orders_count: number; // pedidos que no van a la factura global (hoja «Otras facturas»)
 	unassigned_orders: number; // pedidos sin conductor sumados al vendedor por defecto
-	total_sales: Money;
+	totals: ClosureCategoryTotals;
+	total_sales: Money; // todas las categorías
+	cash_to_collect: Money; // efectivo a recibir: POS efectivo + electrónica efectivo
 	exported_at: IsoDateTime | null;
 	export_outdated: boolean; // cambió después de exportar
 }
@@ -42,8 +58,11 @@ export interface ClosureCards {
 	dispatched: number;
 	delivered: number;
 	cancelled: number;
+	cancelled_after_dispatch: number; // cancelados después de despacharse (devoluciones)
 	sellers_count: number;
-	total_income: Money; // despachados + entregados
+	totals: ClosureCategoryTotals;
+	total_income: Money; // despachados + entregados, todas las categorías
+	cash_to_collect: Money; // efectivo a recibir: POS efectivo + electrónica efectivo
 }
 
 export interface ShiftClosureSummary {

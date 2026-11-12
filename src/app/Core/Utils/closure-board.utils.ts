@@ -3,9 +3,12 @@
 // ==================================================
 // GET /shifts_closures/summary trae todo el día (cards y una fila por vendedor), sin paginar.
 // Los Pedidos PENDING y CANCELLED no se facturan: solo cuentan en las cards.
+// Solo la factura POS en efectivo va a la factura global de cada vendedor (hoja «Consolidado
+// POS»); el resto de pedidos facturables sale en «Otras facturas» y el cuadre de caja.
 
-import { ClosureCards, ClosureProduct, ClosureSellerRow } from '@core/Models/CoreModule/closure.model';
-import { toNumber } from './money.utils';
+import { ClosureCards, ClosureCategoryTotals, ClosureProduct, ClosureSellerRow, ShiftClosureSummary } from '@core/Models/CoreModule/closure.model';
+import { escapeHtml } from './html.utils';
+import { formatCop, toNumber } from './money.utils';
 import { BoardSort } from './order-board.utils';
 import { normalizeText } from './text.utils';
 
@@ -27,15 +30,26 @@ export function filterSellers(rows: readonly ClosureSellerRow[], search: string)
 }
 
 // ----- Orden -----
-export type ClosureSortKey = 'seller' | 'quantity' | 'sales';
+// quantity = unidades de la factura global · cash = efectivo a recibir · sales = total vendido
+export type ClosureSortKey = 'seller' | 'quantity' | 'cash' | 'sales';
 export type ClosureSort = BoardSort<ClosureSortKey>;
 
 // Sin `sort` se respeta el orden de la API. Empates por id del vendedor para que sea estable.
 export function sortSellers(rows: readonly ClosureSellerRow[], sort: ClosureSort | null): ClosureSellerRow[] {
 	if (!sort) return [...rows];
 	const sign = sort.direction === 'asc' ? 1 : -1;
-	const value = (row: ClosureSellerRow): number =>
-		sort.key === 'seller' ? row.seller_code : sort.key === 'quantity' ? row.total_quantity : toNumber(row.total_sales);
+	const value = (row: ClosureSellerRow): number => {
+		switch (sort.key) {
+			case 'seller':
+				return row.seller_code;
+			case 'quantity':
+				return row.total_quantity;
+			case 'cash':
+				return toNumber(row.cash_to_collect);
+			case 'sales':
+				return toNumber(row.total_sales);
+		}
+	};
 	return [...rows].sort((a, b) => (value(a) - value(b)) * sign || a.id_user_vehicle - b.id_user_vehicle);
 }
 
@@ -62,6 +76,61 @@ export function lastExportedAt(sellers: readonly ClosureSellerRow[]): string | n
 // Completados = lo que se factura: despachados + entregados
 export function completedOrders(cards: ClosureCards): number {
 	return cards.dispatched + cards.delivered;
+}
+
+// ----- Desglose por factura y pago -----
+export interface BreakdownRow {
+	label: string;
+	cash: string;
+	transfer: string;
+	credit: string;
+}
+
+// Dos filas (POS y Electrónica) × tres columnas (Efectivo, Transferencia, Crédito)
+export function breakdownRows(totals: ClosureCategoryTotals): BreakdownRow[] {
+	return [
+		{ label: 'Factura POS', cash: totals.pos_cash, transfer: totals.pos_transfer, credit: totals.pos_credit },
+		{ label: 'Factura electrónica', cash: totals.electronic_cash, transfer: totals.electronic_transfer, credit: totals.electronic_credit },
+	];
+}
+
+// ¿Hay algo que desglosar? (un día sin ventas no muestra el cuadro)
+export function hasBreakdown(totals: ClosureCategoryTotals): boolean {
+	return Object.values(totals).some((value) => toNumber(value) !== 0);
+}
+
+// ----- Filas -----
+// ¿El vendedor tiene factura global? (si solo vendió con otras facturas, no)
+export function hasGlobalInvoice(row: ClosureSellerRow): boolean {
+	return row.products.length > 0;
+}
+
+// ----- Exportación -----
+// Las hojas del Excel (las arma la API)
+export const EXPORT_SHEETS: readonly string[] = ['Consolidado POS', 'Otras facturas', 'Cuadre de caja'];
+
+// Líneas (HTML ya escapado) de la confirmación de exportar: qué contiene el archivo, el total, el
+// efectivo a recibir y los avisos de pendientes, cancelados tras despachar y reexportación.
+export function exportConfirmLines(summary: ShiftClosureSummary, again: boolean): string[] {
+	const { cards, sellers } = summary;
+	const count = sellers.length;
+	const lines = [
+		`Se genera el Excel con <strong>${EXPORT_SHEETS.length} hojas</strong>: ${EXPORT_SHEETS.map((name) => `«${escapeHtml(name)}»`).join(', ')}.`,
+		`<strong>${count}</strong> ${count === 1 ? 'vendedor' : 'vendedores'}, ventas por <strong>${escapeHtml(formatCop(cards.total_income))}</strong> ` +
+			`y efectivo a recibir de <strong>${escapeHtml(formatCop(cards.cash_to_collect))}</strong>.`,
+	];
+	if (cards.pending > 0) {
+		const n = cards.pending;
+		lines.push(
+			`<span style="color:#b45309">Hay ${n} ${n === 1 ? 'pedido pendiente' : 'pedidos pendientes'} que no se ${n === 1 ? 'factura' : 'facturan'}.</span>`
+		);
+	}
+	if (cards.cancelled_after_dispatch > 0) {
+		const n = cards.cancelled_after_dispatch;
+		lines.push(`${n} ${n === 1 ? 'pedido cancelado' : 'pedidos cancelados'} tras despacharse: no se factura y solo aparece como informativo en el cuadre de caja.`);
+	}
+	if (again) lines.push('Ya se había exportado: se actualizan los cierres de este día.');
+	return lines;
 }
 
 // ----- Textos -----

@@ -1,14 +1,19 @@
 // ==================================================
 // Vista: Cierre y reportes
 // ==================================================
-// Resumen de un día (hoy por defecto) para cerrarlo: cards con los totales, una fila por
-// vendedor con lo que se le factura y el botón que exporta el Excel para Siigo.
+// Resumen de un día (hoy por defecto) para cerrarlo: cards con los totales (ventas y efectivo a
+// recibir), el desglose por tipo de factura y método de pago, una fila por vendedor y el botón
+// que exporta el Excel para Siigo.
 //
 // Reglas (las aplica la API; aquí solo se muestran):
-//   - Se factura lo despachado y entregado del día, una factura global por vendedor.
-//     Los pendientes y cancelados solo cuentan en las cards.
+//   - Se factura lo despachado y entregado del día. Solo la factura POS en efectivo va a la
+//     factura global de cada vendedor; las demás (electrónica, transferencia, crédito) salen en
+//     «Otras facturas». Los pendientes y cancelados solo cuentan en las cards.
+//   - Efectivo a recibir = POS en efectivo + electrónica en efectivo. El crédito es informativo.
+//   - Los cancelados después de despachar se avisan aparte (devoluciones) y no suman ventas.
 //   - Los pedidos sin conductor se suman al vendedor por defecto.
-//   - Cerrar el día es exportarlo; se puede reexportar y no se permiten fechas futuras.
+//   - Cerrar el día es exportarlo (Excel de 3 hojas); se puede reexportar y no se permiten
+//     fechas futuras.
 // La búsqueda, el orden y la paginación se hacen aquí (ver closure-board.utils).
 
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
@@ -34,10 +39,14 @@ import {
 	ClosureSort,
 	ClosureSortKey,
 	ExportState,
+	breakdownRows,
 	completedOrders,
+	exportConfirmLines,
 	exportState,
 	filterSellers,
 	formatSellerCode,
+	hasBreakdown,
+	hasGlobalInvoice,
 	isFutureDate,
 	lastExportedAt,
 	productCodes,
@@ -46,8 +55,6 @@ import {
 } from '@core/Utils/closure-board.utils';
 import { todayBogota } from '@core/Utils/date.utils';
 import { saveBlobResponse } from '@core/Utils/download.utils';
-import { escapeHtml } from '@core/Utils/html.utils';
-import { formatCop } from '@core/Utils/money.utils';
 import { BOARD_PAGE_SIZE, PAGE_SIZE_OPTIONS, nextSort, paginate, totalPages } from '@core/Utils/order-board.utils';
 
 type LoadMode = 'initial' | 'manual';
@@ -104,7 +111,7 @@ export class ClosureBoardComponent {
 	});
 	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page(), this.pageSize()));
 	protected readonly firstRowNumber = computed(() => (this.page() - 1) * this.pageSize() + 1);
-	protected readonly columnCount = 4;
+	protected readonly columnCount = 6;
 
 	// ----- Derivados para las cards -----
 	protected readonly state = computed<ExportState>(() => {
@@ -116,6 +123,10 @@ export class ClosureBoardComponent {
 		const current = this.summary();
 		return current ? completedOrders(current.cards) : 0;
 	});
+	protected readonly breakdown = computed(() => {
+		const current = this.summary();
+		return current && hasBreakdown(current.cards.totals) ? breakdownRows(current.cards.totals) : [];
+	});
 	protected readonly canExport = computed(
 		() => !this.loading() && !this.loadFailed() && !this.exporting() && this.sellers().length > 0
 	);
@@ -124,6 +135,7 @@ export class ClosureBoardComponent {
 	protected readonly longDateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
 	protected readonly timeOptions: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true };
 	protected readonly formatSellerCode = formatSellerCode;
+	protected readonly hasGlobalInvoice = hasGlobalInvoice;
 	protected readonly productCodes = productCodes;
 	protected readonly productDetail = productDetail;
 
@@ -208,17 +220,7 @@ export class ClosureBoardComponent {
 			new Date(`${date}T12:00:00`)
 		);
 		const again = this.state() === 'exported' || this.state() === 'outdated';
-		const lines = [
-			`Se genera el Excel para Siigo con <strong>${current.sellers.length}</strong> ${current.sellers.length === 1 ? 'vendedor' : 'vendedores'} ` +
-				`y un total de <strong>${escapeHtml(formatCop(current.cards.total_income))}</strong>.`,
-		];
-		if (current.cards.pending > 0) {
-			const n = current.cards.pending;
-			lines.push(
-				`<span style="color:#b45309">Hay ${n} ${n === 1 ? 'pedido pendiente' : 'pedidos pendientes'} que no se ${n === 1 ? 'factura' : 'facturan'}.</span>`
-			);
-		}
-		if (again) lines.push('Ya se había exportado: se actualizan los cierres de este día.');
+		const lines = exportConfirmLines(current, again);
 
 		this.exporting.set(true);
 		try {
