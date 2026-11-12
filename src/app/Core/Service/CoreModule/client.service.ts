@@ -16,6 +16,7 @@ import {
 } from '@core/Models/CoreModule/catalog.model';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
 import { toHttpParams } from '@core/Utils/http-params.utils';
+import { SortRequest } from '@core/Utils/table-sort.utils';
 import { GenericService } from '../generic.service';
 
 // CRUD de clientes (/clients), búsqueda para tomar pedidos y panel de administración
@@ -34,7 +35,7 @@ export class ClientService extends GenericService<Client, ClientCreate, ClientUp
 	// ----- Panel de administración (solo ADMINISTRADOR): clientes registrados -----
 
 	// Una página del listado, por nombre (A-Z). Los filtros vacíos no se envían.
-	getAdminPage(query: ClientAdminFilters & PageRequest): Observable<Page<ClientAdminRow>> {
+	getAdminPage(query: ClientAdminFilters & PageRequest & SortRequest): Observable<Page<ClientAdminRow>> {
 		return this.http.get<Page<ClientAdminRow>>(`${this.baseUrl}/admin`, { params: toHttpParams(query) });
 	}
 

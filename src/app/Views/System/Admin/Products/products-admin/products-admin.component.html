@@ -47,11 +47,11 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col">CÓDIGO</th>
-						<th scope="col">PRODUCTO</th>
-						<th scope="col">PRECIO BASE</th>
-						<th scope="col">PRECIOS ESPECIALES</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="code" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">CÓDIGO</th>
+						<th app-sort-header sortKey="name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">PRODUCTO</th>
+						<th app-sort-header sortKey="base_price" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">PRECIO BASE</th>
+						<th app-sort-header sortKey="special_prices_count" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">PRECIOS ESPECIALES</th>
+						<th app-sort-header sortKey="active" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
 				</thead>

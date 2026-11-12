@@ -47,9 +47,9 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col">VEHÍCULO</th>
-						<th scope="col">ASIGNACIONES ACTIVAS</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">VEHÍCULO</th>
+						<th app-sort-header sortKey="assignments_count" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ASIGNACIONES ACTIVAS</th>
+						<th app-sort-header sortKey="active" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
 				</thead>

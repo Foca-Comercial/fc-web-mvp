@@ -12,6 +12,7 @@ import {
 } from '@core/Models/CoreModule/catalog.model';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
 import { toHttpParams } from '@core/Utils/http-params.utils';
+import { SortRequest } from '@core/Utils/table-sort.utils';
 import { GenericService } from '../generic.service';
 
 // CRUD de productos (/products), catálogo con el precio que aplica a cada cliente y panel
@@ -35,7 +36,7 @@ export class ProductService extends GenericService<Product, ProductCreate, Produ
 	// ----- Panel de administración (solo ADMINISTRADOR) -----
 
 	// Una página del listado, por código. Los filtros vacíos no se envían.
-	getAdminPage(query: ProductAdminFilters & PageRequest): Observable<Page<ProductAdminRow>> {
+	getAdminPage(query: ProductAdminFilters & PageRequest & SortRequest): Observable<Page<ProductAdminRow>> {
 		return this.http.get<Page<ProductAdminRow>>(`${this.baseUrl}/admin`, { params: toHttpParams(query) });
 	}
 

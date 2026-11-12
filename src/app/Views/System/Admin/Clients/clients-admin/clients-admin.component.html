@@ -56,12 +56,12 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col">CLIENTE</th>
-						<th scope="col">TELÉFONO</th>
-						<th scope="col">BARRIO · ZONA</th>
+						<th app-sort-header sortKey="name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">CLIENTE</th>
+						<th app-sort-header sortKey="phone" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">TELÉFONO</th>
+						<th app-sort-header sortKey="zone_name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">BARRIO · ZONA</th>
 						<th scope="col">PRECIOS Y RUTAS</th>
-						<th scope="col">FACTURA</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="requires_electronic_invoice" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">FACTURA</th>
+						<th app-sort-header sortKey="active" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
 				</thead>

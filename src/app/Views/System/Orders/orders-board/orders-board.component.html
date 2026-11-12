@@ -38,10 +38,11 @@
 				</button>
 			</div>
 		</div>
-		<div class="grid gap-3 sm:grid-cols-3">
+		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 			<app-filter-select label="Zonas" allLabel="Todas las zonas" [options]="zoneOptions()" [(value)]="zone" />
-			<app-filter-select label="Estado" allLabel="Todos los estados" [options]="statusOptions()" [(value)]="status" />
+			<app-filter-select label="Ruta" allLabel="Todos los pedidos" [options]="routeOptions()" [(value)]="route" />
 			<app-filter-select label="Domiciliario" allLabel="Todos" [options]="driverOptions()" [(value)]="driver" />
+			<app-filter-select label="Estado" allLabel="Todos los estados" [options]="statusOptions()" [(value)]="status" />
 		</div>
 	</div>
 
@@ -61,6 +62,23 @@
 			[id]="'board-tab-panel-' + tab()"
 			[attr.aria-labelledby]="'board-tab-' + tab()"
 		>
+			<!-- Despacho múltiple: una ruta y un domiciliario -->
+			@if (batchMode()) {
+				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6">
+					<p class="text-sm text-slate-600" aria-live="polite">
+						<span class="font-bold text-slate-900">{{ selected().length }}</span> seleccionados para despachar juntos
+					</p>
+					<button type="button" class="btn-primary" [disabled]="selected().length === 0" (click)="dispatchSelected()">
+						<app-icon name="document-text" size="size-4" />
+						Despachar seleccionados ({{ selected().length }})
+					</button>
+				</div>
+			} @else if (tab() === 'pending' && !isFutureDay() && routeOptions().length > 0) {
+				<p class="border-b border-slate-200 px-4 py-2.5 text-xs text-slate-500 sm:px-6">
+					Para despachar varios pedidos a la vez, filtra una ruta y un domiciliario.
+				</p>
+			}
+
 			<app-data-table>
 				<table>
 					<caption class="sr-only">
@@ -68,42 +86,48 @@
 					</caption>
 					<thead>
 						<tr>
-							<th scope="col" [attr.aria-sort]="ariaSort('po')">
-								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('po')">
-									PO
-									<app-icon [name]="sortIcon('po')" size="size-3.5" />
-								</button>
-							</th>
-							<th scope="col" [attr.aria-sort]="ariaSort('time')">
-								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('time')">
-									HORA
-									<app-icon [name]="sortIcon('time')" size="size-3.5" />
-								</button>
-							</th>
-							<th scope="col" [attr.aria-sort]="ariaSort('client')">
-								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('client')">
-									CLIENTE Y ZONA
-									<app-icon [name]="sortIcon('client')" size="size-3.5" />
-								</button>
-							</th>
+							@if (batchMode()) {
+								<th scope="col">
+									<input
+										type="checkbox"
+										class="size-4 cursor-pointer accent-brand-700"
+										aria-label="Seleccionar todos los pedidos pendientes del filtro"
+										[checked]="allSelected()"
+										(change)="toggleAll()"
+									/>
+								</th>
+							}
+							<th app-sort-header sortKey="po" [sort]="sort()" (sortRequested)="toggleSort($event)">PO</th>
+							<th app-sort-header sortKey="time" [sort]="sort()" (sortRequested)="toggleSort($event)">Hora</th>
+							<th app-sort-header sortKey="client" [sort]="sort()" (sortRequested)="toggleSort($event)">Cliente y zona</th>
 							<th scope="col">Producto</th>
-							<th scope="col" [attr.aria-sort]="ariaSort('driver')">
-								<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('driver')">
-									DOMICILIARIO
-									<app-icon [name]="sortIcon('driver')" size="size-3.5" />
-								</button>
-							</th>
-							<th scope="col">Estado</th>
+							<th scope="col">Pago</th>
+							<th app-sort-header sortKey="driver" [sort]="sort()" (sortRequested)="toggleSort($event)">Domiciliario</th>
+							<th app-sort-header sortKey="state" [sort]="sort()" (sortRequested)="toggleSort($event)">Estado</th>
 							<th scope="col">Acciones</th>
 						</tr>
 					</thead>
 
 					@if (loading()) {
-						<tbody app-table-skeleton [rows]="8" [columns]="columnCount"></tbody>
+						<tbody app-table-skeleton [rows]="8" [columns]="columnCount()"></tbody>
 					} @else {
 						<tbody>
 							@for (row of visibleRows(); track row.id_order) {
+								@let actions = orderCapabilities(row.state, isFutureDay());
 								<tr>
+									@if (batchMode()) {
+										<td>
+											@if (actions.canDispatch) {
+												<input
+													type="checkbox"
+													class="size-4 cursor-pointer accent-brand-700"
+													[attr.aria-label]="'Seleccionar el pedido ' + row.purchase_order"
+													[checked]="selected().includes(row.id_order)"
+													(change)="toggleSelected(row.id_order)"
+												/>
+											}
+										</td>
+									}
 									<td class="font-bold tabular-nums text-brand-950">{{ row.purchase_order }}</td>
 									<td class="whitespace-nowrap">
 										<span class="block font-bold tabular-nums text-slate-900">{{ row.creation_time | apiTime }}</span>
@@ -111,12 +135,24 @@
 									<td>
 										<span class="block font-bold text-slate-900">{{ row.client_name }}</span>
 										<span class="block text-xs text-slate-500">{{ row.zone_name }}</span>
+										@if (row.route_name) {
+											<span class="mt-1 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">
+												<app-icon name="map-pin" size="size-3.5" />
+												{{ row.route_name }}
+											</span>
+										}
 									</td>
 									<td>
 										<span class="mx-auto block max-w-52 truncate font-bold text-slate-900" [title]="row.product_codes">
 											{{ row.product_codes }}
 										</span>
 										<span class="block text-xs text-slate-500">Cantidad total: {{ row.total_quantity }}</span>
+									</td>
+									<td class="whitespace-nowrap">
+										<span class="block font-bold text-slate-900">{{ paymentLabels[row.payment_method] }}</span>
+										<span class="block text-xs text-slate-500">
+											{{ invoiceLabels[row.invoice_type] }}{{ row.has_receipt ? '' : ' · Sin CD' }}
+										</span>
 									</td>
 									<td>
 										@if (row.driver_code) {
@@ -136,7 +172,6 @@
 										}
 									</td>
 									<td>
-										@let actions = orderCapabilities(row.state, isFutureDay());
 										<div class="flex items-center justify-center gap-2">
 											<button
 												app-icon-button
@@ -160,6 +195,15 @@
 													tone="success"
 													[label]="'Marcar el pedido ' + row.purchase_order + ' como entregado'"
 													(click)="deliver(row)"
+												></button>
+											}
+											@if (actions.canCancel) {
+												<button
+													app-icon-button
+													icon="no-symbol"
+													tone="danger"
+													[label]="'Cancelar el pedido ' + row.purchase_order"
+													(click)="cancel(row)"
 												></button>
 											}
 										</div>
@@ -232,6 +276,8 @@
 </section>
 
 <app-new-order-modal [(open)]="newOrderOpen" [deliveryDate]="day()" (created)="onOrderCreated($event)" />
+
+<app-order-cancel-modal [order]="cancelling()" (closed)="cancelling.set(null)" (done)="onCancelled($event)" />
 
 <app-order-detail-modal
 	[orderId]="selectedId()"

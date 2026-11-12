@@ -121,6 +121,28 @@ export interface OrderSummary {
 	driver_code: string | null;
 	driver_name: string | null;
 	state: OrderState;
+	id_route: number | null; // ruta de la que se generó (null = pedido individual)
+	route_name: string | null;
+	payment_method: PaymentMethod;
+	invoice_type: InvoiceType;
+	has_receipt: boolean; // lleva CD: solo POS + efectivo
+}
+
+// POST /orders/{id}/cancel: solo PENDING o DISPATCHED (si no, 422 ORDER_NOT_CANCELLABLE)
+export interface OrderCancelRequest {
+	cancel_reason: CancelReason;
+	cancel_note?: string | null; // opcional, máx. 300
+}
+
+// POST /orders/dispatch-batch: todo o nada. Si alguno no se puede despachar responde 422
+// ORDER_BATCH_NOT_DISPATCHABLE con `details` (PO y motivo de cada uno) y no despacha ninguno.
+export interface OrderDispatchBatchRequest {
+	ids: number[]; // 1 a 100, sin repetidos
+}
+
+export interface OrderDispatchBatchResponse {
+	dispatched: number;
+	orders: Order[];
 }
 
 // ----- Modal de detalle (GET /orders/{id}/details) -----

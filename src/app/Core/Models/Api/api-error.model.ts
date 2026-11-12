@@ -19,6 +19,15 @@ export interface BusinessErrorBody {
 	detail: string;
 	code: string;
 	field: string | null;
+	// Solo cuando el error abarca varios elementos (p. ej. el despacho múltiple: qué pedidos
+	// fallaron y por qué)
+	details?: BusinessErrorDetail[];
+}
+
+export interface BusinessErrorDetail {
+	reason: string;
+	id_order?: number;
+	purchase_order?: string | null;
 }
 
 // Formato 2: un error de validación de Pydantic
@@ -60,5 +69,7 @@ export interface ApiError {
 	code: string | null;
 	field: string | null;
 	fieldErrors: FieldError[];
+	// Un texto por elemento de `details` del BusinessError ("PO 003: …"), si vino
+	details?: string[];
 	raw: HttpErrorResponse | unknown;
 }

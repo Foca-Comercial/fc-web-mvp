@@ -15,6 +15,7 @@ import {
 } from '@core/Models/CoreModule/driver.model';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
 import { toHttpParams } from '@core/Utils/http-params.utils';
+import { SortRequest } from '@core/Utils/table-sort.utils';
 
 // Panel de administración: domiciliarios (usuarios VENDEDOR) y sus asignaciones con
 // vehículos. Solo ADMINISTRADOR. No hay CRUD genérico: un domiciliario es persona +
@@ -25,7 +26,7 @@ export class DriverService {
 	private readonly baseUrl = `${API_ENDPOINTS.drivers}/admin`;
 
 	// ----- Domiciliarios -----
-	getAdminPage(query: DriverAdminFilters & PageRequest): Observable<Page<DriverAdminRow>> {
+	getAdminPage(query: DriverAdminFilters & PageRequest & SortRequest): Observable<Page<DriverAdminRow>> {
 		return this.http.get<Page<DriverAdminRow>>(this.baseUrl, { params: toHttpParams(query) });
 	}
 

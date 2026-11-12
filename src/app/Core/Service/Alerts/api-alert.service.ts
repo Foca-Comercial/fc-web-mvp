@@ -44,10 +44,16 @@ export class ApiAlertService {
 	// ----- FORMATO 1: BusinessError -----
 	showBusinessError(error: ApiError, title?: string): Promise<unknown> {
 		const field = error.field ? `Campo: ${fieldLabel(error.field)}` : '';
+		// Con `details` (p. ej. despacho múltiple) se lista cada elemento con su motivo
+		const details = error.details?.length
+			? `<p>${escapeHtml(error.message)}</p><ul style="text-align:left;margin:0.75rem 0 0;padding-left:1.25rem;line-height:1.6">${error.details
+					.map((item) => `<li>${escapeHtml(item)}</li>`)
+					.join('')}</ul>`
+			: undefined;
 		return this.alert.custom({
 			icon: error.status >= 500 ? 'error' : 'warning',
 			title: title ?? BUSINESS_TITLES[error.status] ?? 'Ocurrió un error',
-			text: error.message,
+			...(details ? { html: details } : { text: error.message }),
 			// El código ayuda a soporte a ubicar la regla exacta en el backend
 			footer: [field, error.code ? `Código: ${error.code}` : ''].filter(Boolean).join(' · ') || undefined,
 		});

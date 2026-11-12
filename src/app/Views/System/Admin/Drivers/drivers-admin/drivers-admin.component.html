@@ -47,10 +47,10 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col">DOMICILIARIO</th>
-						<th scope="col">TELÉFONO</th>
+						<th app-sort-header sortKey="name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">DOMICILIARIO</th>
+						<th app-sort-header sortKey="phone" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">TELÉFONO</th>
 						<th scope="col">CÓDIGOS</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="active" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
 				</thead>

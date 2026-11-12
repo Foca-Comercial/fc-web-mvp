@@ -27,6 +27,7 @@ import { PaginationComponent } from '@components/Shared/pagination/pagination.co
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
+import { SortHeaderComponent } from '@components/Shared/sort-header/sort-header.component';
 import { ClientFormComponent } from '@components/System/Admin/client-form/client-form.component';
 import { ClientPricesComponent } from '@components/System/Admin/client-prices/client-prices.component';
 import { ClientAdminFilters, ClientAdminRow } from '@core/Models/CoreModule/catalog.model';
@@ -56,6 +57,7 @@ import { PAGE_SIZE_OPTIONS } from '@core/Utils/order-board.utils';
 @Component({
 	selector: 'app-clients-admin',
 	imports: [
+		SortHeaderComponent,
 		ClientFormComponent,
 		ClientPricesComponent,
 		DataTableComponent,

@@ -48,11 +48,11 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col">RUTA</th>
+						<th app-sort-header sortKey="name" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">RUTA</th>
 						<th scope="col">DÍAS</th>
-						<th scope="col">SALIDA</th>
-						<th scope="col">CLIENTES</th>
-						<th scope="col">ESTADO</th>
+						<th app-sort-header sortKey="departure_time" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">SALIDA</th>
+						<th app-sort-header sortKey="clients_count" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">CLIENTES</th>
+						<th app-sort-header sortKey="active" [sort]="table.sort()" (sortRequested)="table.toggleSort($event)">ESTADO</th>
 						<th scope="col">ACCIONES</th>
 					</tr>
 				</thead>

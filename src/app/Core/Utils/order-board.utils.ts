@@ -22,12 +22,13 @@ export interface BoardFilters {
 	zone: string; // nombre de la zona; '' = todas
 	status: string; // BoardStatusKey; '' = todos
 	driver: string; // driver_code; '' = todos
+	route: string; // id_route como texto; '' = todos (incluidos los individuales)
 }
 
 // Valor del filtro "Domiciliario" para los pedidos que aún no tienen uno asignado
 export const NO_DRIVER = '__none__';
 
-export const EMPTY_BOARD_FILTERS: BoardFilters = { search: '', zone: '', status: '', driver: '' };
+export const EMPTY_BOARD_FILTERS: BoardFilters = { search: '', zone: '', status: '', driver: '', route: '' };
 
 export const BOARD_STATUS_LABELS: Record<BoardStatusKey, string> = {
 	pending: 'Pendiente',
@@ -80,6 +81,8 @@ export function filterOrders(rows: readonly OrderSummary[], filters: BoardFilter
 			matchesSearch(row, filters.search) &&
 			(!filters.zone || row.zone_name === filters.zone) &&
 			matchesDriver(row, filters.driver) &&
+			// Solo los generados desde esa ruta: un pedido individual del mismo cliente tiene id_route null
+			(!filters.route || String(row.id_route) === filters.route) &&
 			(!filters.status || boardStatusKey(row, now, day) === filters.status)
 	);
 }
@@ -104,6 +107,17 @@ export function driverOptions(rows: readonly OrderSummary[]): { value: string; l
 	return unassigned ? [{ value: NO_DRIVER, label: 'Sin asignar' }, ...options] : options;
 }
 
+// Rutas de las que vienen los pedidos del día, ordenadas A-Z
+export function routeOptions(rows: readonly OrderSummary[]): { value: string; label: string }[] {
+	const routes = new Map<number, string>();
+	for (const row of rows) {
+		if (row.id_route !== null) routes.set(row.id_route, row.route_name ?? `Ruta ${row.id_route}`);
+	}
+	return [...routes]
+		.sort((a, b) => a[1].localeCompare(b[1], 'es'))
+		.map(([id, name]) => ({ value: String(id), label: name }));
+}
+
 export function statusOptions(keys: readonly BoardStatusKey[]): { value: string; label: string }[] {
 	return keys.map((key) => ({ value: key, label: BOARD_STATUS_LABELS[key] }));
 }
@@ -118,9 +132,28 @@ export function paginate<T>(rows: readonly T[], page: number, pageSize = BOARD_P
 	return rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 }
 
+// ----- Despacho múltiple -----
+// Se despachan juntos los pedidos de UNA ruta con UN domiciliario (p. ej. los que salen en el
+// mismo vehículo): la selección solo se habilita con ambos filtros en un valor concreto.
+export function canBatchDispatch(filters: BoardFilters): boolean {
+	return filters.route !== '' && filters.driver !== '' && filters.driver !== NO_DRIVER;
+}
+
+// Agrega o quita un pedido de la selección
+export function toggleId(selected: readonly number[], id: number): number[] {
+	return selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id];
+}
+
 // ----- Orden de las columnas -----
-// Columnas que se pueden ordenar: PO, Hora, Cliente (por nombre) y Domiciliario (por código)
-export type SortKey = 'po' | 'time' | 'client' | 'driver';
+// Columnas que se pueden ordenar: PO, Hora, Cliente (por nombre), Domiciliario (por código) y
+// Estado
+export const SORT_KEYS = ['po', 'time', 'client', 'driver', 'state'] as const;
+export type SortKey = (typeof SORT_KEYS)[number];
+
+// El encabezado reutilizable (<th app-sort-header>) emite la clave como texto
+export function isSortKey(key: string): key is SortKey {
+	return (SORT_KEYS as readonly string[]).includes(key);
+}
 export type SortDirection = 'asc' | 'desc';
 export interface BoardSort<K extends string = SortKey> {
 	key: K;
@@ -135,6 +168,14 @@ export function nextSort<K extends string = SortKey>(current: BoardSort<K> | nul
 
 const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
 
+// Orden del flujo del pedido: los cancelados al final
+const STATE_ORDER: Record<OrderState, number> = {
+	[OrderState.PENDING]: 0,
+	[OrderState.DISPATCHED]: 1,
+	[OrderState.DELIVERED]: 2,
+	[OrderState.CANCELLED]: 3,
+};
+
 function compareBy(a: OrderSummary, b: OrderSummary, key: SortKey): number {
 	switch (key) {
 		case 'po':
@@ -145,8 +186,11 @@ function compareBy(a: OrderSummary, b: OrderSummary, key: SortKey): number {
 			return collator.compare(a.client_name, b.client_name);
 		case 'driver':
 			return collator.compare(a.driver_code ?? '', b.driver_code ?? '');
+		case 'state':
+			return STATE_ORDER[a.state] - STATE_ORDER[b.state];
 	}
 }
+
 
 // Sin `sort` devuelve las filas tal cual llegaron. Los pedidos sin domiciliario van siempre al
 // final (en ambos sentidos) y los empates se desempatan por id para que el orden sea estable.

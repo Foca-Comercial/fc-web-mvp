@@ -29,6 +29,7 @@ import { SearchInputComponent } from '@components/Shared/search-input/search-inp
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.component';
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
+import { SortHeaderComponent } from '@components/Shared/sort-header/sort-header.component';
 import { ShiftClosureSummary } from '@core/Models/CoreModule/closure.model';
 import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
 import { CopCurrencyPipe } from '@core/Pipes/cop-currency.pipe';
@@ -37,7 +38,6 @@ import { ApiAlertService } from '@core/Service/Alerts/api-alert.service';
 import { ShiftClosureService } from '@core/Service/CoreModule/shift-closure.service';
 import {
 	ClosureSort,
-	ClosureSortKey,
 	ExportState,
 	completedOrders,
 	exportConfirmLines,
@@ -45,6 +45,7 @@ import {
 	filterSellers,
 	formatSellerCode,
 	hasGlobalInvoice,
+	isClosureSortKey,
 	isFutureDate,
 	lastExportedAt,
 	productCodes,
@@ -60,6 +61,7 @@ type LoadMode = 'initial' | 'manual';
 @Component({
 	selector: 'app-closure-board',
 	imports: [
+		SortHeaderComponent,
 		BogotaDatePipe,
 		CopCurrencyPipe,
 		DataTableComponent,
@@ -185,19 +187,8 @@ export class ClosureBoardComponent {
 		this.date.set(this.today);
 	}
 
-	protected toggleSort(key: ClosureSortKey): void {
-		this.sort.update((current) => nextSort(current, key));
-	}
-
-	protected ariaSort(key: ClosureSortKey): 'ascending' | 'descending' | 'none' {
-		const sort = this.sort();
-		if (sort?.key !== key) return 'none';
-		return sort.direction === 'asc' ? 'ascending' : 'descending';
-	}
-
-	protected sortIcon(key: ClosureSortKey): 'chevron-up' | 'chevron-down' | 'chevron-up-down' {
-		const state = this.ariaSort(key);
-		return state === 'ascending' ? 'chevron-up' : state === 'descending' ? 'chevron-down' : 'chevron-up-down';
+	protected toggleSort(key: string): void {
+		if (isClosureSortKey(key)) this.sort.update((current) => nextSort(current, key));
 	}
 
 	protected retry(): void {

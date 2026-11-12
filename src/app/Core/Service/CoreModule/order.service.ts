@@ -5,8 +5,10 @@ import { Observable } from 'rxjs';
 import { API_ENDPOINTS } from '@core/Constants/api-endpoints';
 import {
 	Order,
+	OrderCancelRequest,
 	OrderCreateExistingClient,
 	OrderCreateNewClient,
+	OrderDispatchBatchResponse,
 	OrderFullDetail,
 	OrderHistoryPage,
 	OrderHistoryQuery,
@@ -67,9 +69,19 @@ export class OrderService extends ReadOnlyService<Order> {
 		return this.http.post<Order>(`${this.baseUrl}/${id}/dispatch`, null);
 	}
 
+	// Varios PENDING → DISPATCHED a la vez (todo o nada), con la misma hora de despacho
+	dispatchBatch(ids: number[]): Observable<OrderDispatchBatchResponse> {
+		return this.http.post<OrderDispatchBatchResponse>(`${this.baseUrl}/dispatch-batch`, { ids });
+	}
+
 	// DISPATCHED → DELIVERED
 	deliver(id: number): Observable<Order> {
 		return this.http.post<Order>(`${this.baseUrl}/${id}/deliver`, null);
+	}
+
+	// PENDING o DISPATCHED → CANCELLED, con motivo. La API guarda quién y cuándo
+	cancel(id: number, body: OrderCancelRequest): Observable<Order> {
+		return this.http.post<Order>(`${this.baseUrl}/${id}/cancel`, body);
 	}
 
 	// Asigna o cambia el domiciliario (mientras el pedido no sea final) o la hora estimada (solo PENDING)
@@ -83,7 +95,8 @@ export class OrderService extends ReadOnlyService<Order> {
 		return this.http.put<Order>(`${this.baseUrl}/${id}/items-order`, body);
 	}
 
-	// Comprobante de despacho (CD) en PDF. Solo existe para pedidos despachados o entregados
+	// Comprobante de despacho (CD) en PDF. Solo existe para pedidos despachados o entregados y
+	// que lo llevan (POS + efectivo); si no, 422 RECEIPT_NOT_AVAILABLE
 	getReceipt(id: number): Observable<Blob> {
 		return this.http.get(`${this.baseUrl}/${id}/receipt`, { responseType: 'blob' });
 	}

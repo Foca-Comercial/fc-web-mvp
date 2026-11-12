@@ -8,10 +8,13 @@
 // (ver order-board.utils). Se refresca solo cada minuto, sin molestar con alertas.
 //
 // Acciones por fila (ver reglas en order-actions.utils):
-//   - Pendiente: ver detalle, o despachar → pasa a la pestaña de despachados y ofrece
-//     imprimir el comprobante de despacho (CD).
-//   - Despachado: ver detalle, o marcar como entregado.
+//   - Pendiente: ver detalle, despachar → pasa a la pestaña de despachados y, si el pedido lleva
+//     CD (POS + efectivo), ofrece imprimirlo; o cancelar con motivo.
+//   - Despachado: ver detalle, marcar como entregado o cancelar con motivo.
 //   - Entregado / cancelado: solo ver detalle.
+// Despacho múltiple: con el filtro de una ruta y un domiciliario concretos aparecen casillas
+// para despachar juntos los pendientes (POST /orders/dispatch-batch, todo o nada). Los CD se
+// imprimen uno por uno desde el detalle.
 // Asignar o cambiar el domiciliario y reimprimir el CD se hacen dentro del detalle.
 // "Nuevo pedido" abre el formulario de registro (cliente existente o nuevo). Editar los
 // productos y la hora de un pendiente se hace dentro del detalle.
@@ -29,11 +32,13 @@ import { PaginationComponent } from '@components/Shared/pagination/pagination.co
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { TabItem, TabsComponent } from '@components/Shared/tabs/tabs.component';
+import { SortHeaderComponent } from '@components/Shared/sort-header/sort-header.component';
 import { NewOrderModalComponent } from '@components/System/Orders/new-order-modal/new-order-modal.component';
+import { OrderCancelModalComponent } from '@components/System/Orders/order-cancel-modal/order-cancel-modal.component';
 import { OrderDetailModalComponent } from '@components/System/Orders/order-detail-modal/order-detail-modal.component';
 import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
 import { OrderSummary, OrderWithDetails } from '@core/Models/CoreModule/order.model';
-import { OrderState } from '@core/Models/Shared/api-types.model';
+import { INVOICE_TYPE_LABELS, OrderState, PAYMENT_METHOD_LABELS } from '@core/Models/Shared/api-types.model';
 import { ApiTimePipe } from '@core/Pipes/api-time.pipe';
 import { BogotaDatePipe } from '@core/Pipes/bogota-date.pipe';
 import { AlertService } from '@core/Service/Alerts/alert.service';
@@ -48,15 +53,18 @@ import {
 	PAGE_SIZE_OPTIONS,
 	BoardFilters,
 	BoardSort,
-	SortKey,
 	DISPATCHED_TAB_STATUSES,
 	PENDING_TAB_STATUSES,
+	canBatchDispatch,
 	driverOptions,
 	filterOrders,
+	isSortKey,
 	nextSort,
 	paginate,
+	routeOptions,
 	sortOrders,
 	statusOptions,
+	toggleId,
 	totalPages,
 	zoneOptions,
 } from '@core/Utils/order-board.utils';
@@ -82,7 +90,9 @@ const AUTO_REFRESH_MS = 60_000;
 		SearchInputComponent,
 		TableSkeletonComponent,
 		TabsComponent,
+		SortHeaderComponent,
 		NewOrderModalComponent,
+		OrderCancelModalComponent,
 		OrderDetailModalComponent,
 		OrderStatusBadgeComponent,
 		ApiTimePipe,
@@ -122,11 +132,13 @@ export class OrdersBoardComponent {
 	protected readonly zone = signal('');
 	protected readonly status = signal('');
 	protected readonly driver = signal('');
+	protected readonly route = signal('');
 	protected readonly sort = signal<BoardSort | null>(null);
 	protected readonly pageSize = signal(BOARD_PAGE_SIZE);
 	protected readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
 	protected readonly selectedId = signal<number | null>(null);
 	protected readonly newOrderOpen = signal(false);
+	protected readonly cancelling = signal<OrderSummary | null>(null);
 
 	protected readonly tabs = computed<TabItem[]>(() => [
 		{ id: 'pending', label: 'Pedidos pendientes', count: this.pendingRows().length },
@@ -139,10 +151,12 @@ export class OrdersBoardComponent {
 		zone: this.zone(),
 		status: this.status(),
 		driver: this.driver(),
+		route: this.route(),
 	}));
 
 	protected readonly zoneOptions = computed(() => zoneOptions(this.activeRows()));
 	protected readonly driverOptions = computed(() => driverOptions(this.activeRows()));
+	protected readonly routeOptions = computed(() => routeOptions(this.activeRows()));
 	protected readonly statusOptions = computed(() =>
 		statusOptions(this.tab() === 'pending' ? PENDING_TAB_STATUSES : DISPATCHED_TAB_STATUSES)
 	);
@@ -162,8 +176,29 @@ export class OrdersBoardComponent {
 	});
 
 	protected readonly visibleRows = computed(() => paginate(this.sorted(), this.page(), this.pageSize()));
-	protected readonly columnCount = 7;
+
+	// ----- Despacho múltiple -----
+	// Solo en pendientes de un día que ya se puede despachar, con una ruta y un domiciliario filtrados
+	protected readonly batchMode = computed(
+		() => this.tab() === 'pending' && !this.isFutureDay() && canBatchDispatch(this.filters())
+	);
+	// Todos los despachables del filtro (no solo los de la página visible)
+	private readonly batchCandidates = computed(() =>
+		this.batchMode() ? this.sorted().filter((row) => orderCapabilities(row.state).canDispatch).map((row) => row.id_order) : []
+	);
+	// Al cambiar el filtro o refrescar se quitan de la selección los que ya no están
+	protected readonly selected = linkedSignal<number[], number[]>({
+		source: this.batchCandidates,
+		computation: (candidates, previous) => (previous ? previous.value.filter((id) => candidates.includes(id)) : []),
+	});
+	protected readonly allSelected = computed(
+		() => this.batchCandidates().length > 0 && this.selected().length === this.batchCandidates().length
+	);
+	protected readonly columnCount = computed(() => (this.batchMode() ? 9 : 8));
+
 	protected readonly OrderState = OrderState;
+	protected readonly paymentLabels = PAYMENT_METHOD_LABELS;
+	protected readonly invoiceLabels = INVOICE_TYPE_LABELS;
 	protected readonly orderCapabilities = orderCapabilities;
 	protected readonly summary = computed(() => {
 		const total = this.filtered().length;
@@ -194,6 +229,10 @@ export class OrdersBoardComponent {
 		effect(() => {
 			const driver = this.driver();
 			if (driver && !this.driverOptions().some((option) => option.value === driver)) this.driver.set('');
+		});
+		effect(() => {
+			const route = this.route();
+			if (route && !this.routeOptions().some((option) => option.value === route)) this.route.set('');
 		});
 	}
 
@@ -273,19 +312,8 @@ export class OrdersBoardComponent {
 		this.status.set('');
 	}
 
-	protected toggleSort(key: SortKey): void {
-		this.sort.update((current) => nextSort(current, key));
-	}
-
-	protected ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
-		const sort = this.sort();
-		if (sort?.key !== key) return 'none';
-		return sort.direction === 'asc' ? 'ascending' : 'descending';
-	}
-
-	protected sortIcon(key: SortKey): 'chevron-up' | 'chevron-down' | 'chevron-up-down' {
-		const state = this.ariaSort(key);
-		return state === 'ascending' ? 'chevron-up' : state === 'descending' ? 'chevron-down' : 'chevron-up-down';
+	protected toggleSort(key: string): void {
+		if (isSortKey(key)) this.sort.update((current) => nextSort(current, key));
 	}
 
 	protected clearFilters(): void {
@@ -293,6 +321,15 @@ export class OrdersBoardComponent {
 		this.zone.set('');
 		this.status.set('');
 		this.driver.set('');
+		this.route.set('');
+	}
+
+	protected toggleSelected(id: number): void {
+		this.selected.update((selected) => toggleId(selected, id));
+	}
+
+	protected toggleAll(): void {
+		this.selected.set(this.allSelected() ? [] : [...this.batchCandidates()]);
 	}
 
 	protected retry(): void {
@@ -332,6 +369,11 @@ export class OrdersBoardComponent {
 		await this.load('change');
 		if (!result.ok) return;
 
+		// Transferencia, crédito o factura electrónica no llevan CD: se despachan igual
+		if (!row.has_receipt) {
+			this.alert.toast(`Pedido ${row.purchase_order} despachado (no lleva CD)`);
+			return;
+		}
 		const print = await this.alert.confirm({
 			title: `Pedido ${row.purchase_order} despachado`,
 			text: '¿Quieres imprimir el comprobante de despacho (CD)? Después podrás reimprimirlo desde el detalle.',
@@ -340,6 +382,42 @@ export class OrdersBoardComponent {
 			cancelText: 'Ahora no',
 		});
 		if (print) await this.printReceipt(row);
+	}
+
+	// Varios PENDING → DISPATCHED (todo o nada). Si alguno falla, la alerta lista cada PO con su
+	// motivo y no se despacha ninguno. No hay impresión múltiple: los CD salen desde el detalle.
+	protected async dispatchSelected(): Promise<void> {
+		const ids = this.selected();
+		if (ids.length === 0) return;
+		const route = this.routeOptions().find((option) => option.value === this.route())?.label ?? '';
+		const driver = this.driverOptions().find((option) => option.value === this.driver())?.label ?? '';
+		const count = ids.length === 1 ? '1 pedido' : `${ids.length} pedidos`;
+
+		const result = await this.apiAlert.confirmAndRun(
+			{
+				title: `¿Despachar ${count}?`,
+				text: `Ruta ${route} · Domiciliario: ${driver}. Los comprobantes (CD) se imprimen uno por uno desde el detalle.`,
+				icon: 'question',
+				confirmText: 'Sí, despachar',
+			},
+			() => this.orders.dispatchBatch(ids),
+			{
+				loadingTitle: 'Despachando pedidos...',
+				successToast: ids.length === 1 ? 'Pedido despachado' : `${ids.length} pedidos despachados`,
+				errorTitle: 'No se despachó ningún pedido',
+			}
+		);
+		if ('cancelled' in result) return;
+		await this.load('change');
+	}
+
+	protected cancel(row: OrderSummary): void {
+		this.cancelling.set(row);
+	}
+
+	protected onCancelled(row: { purchase_order: string }): void {
+		this.alert.toast(`Pedido ${row.purchase_order} cancelado`);
+		void this.load('change');
 	}
 
 	// DISPATCHED → DELIVERED

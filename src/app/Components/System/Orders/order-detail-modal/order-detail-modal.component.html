@@ -293,8 +293,16 @@
 						{{ printing() ? 'Abriendo…' : 'Reimprimir CD' }}
 					</button>
 				}
+				@if (capabilities()?.canCancel) {
+					<button type="button" class="btn-danger" (click)="cancelling.set(true)">
+						<app-icon name="no-symbol" size="size-4" />
+						Cancelar pedido
+					</button>
+				}
 			</div>
 			<button type="button" class="btn-secondary" (click)="onOpenChange(false)">Cerrar</button>
 		</div>
 	}
 </app-modal>
+
+<app-order-cancel-modal [order]="cancelling() ? order() : null" (closed)="cancelling.set(false)" (done)="onCancelled()" />

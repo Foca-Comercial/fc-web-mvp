@@ -16,6 +16,7 @@ import {
 } from '@core/Models/ParametersModule/parameters.model';
 import { Page, PageRequest } from '@core/Models/Shared/api-types.model';
 import { toHttpParams } from '@core/Utils/http-params.utils';
+import { SortRequest } from '@core/Utils/table-sort.utils';
 import { GenericService } from '../generic.service';
 
 // CRUD de rutas (/routes) y lo que lee la vista de Rutas: cards y clientes de cada ruta.
@@ -40,7 +41,7 @@ export class RouteService extends GenericService<Route, RouteCreate, RouteUpdate
 	// ----- Panel de administración (solo ADMINISTRADOR) -----
 
 	// Una página del listado, por nombre. Los filtros vacíos no se envían.
-	getAdminPage(query: RouteAdminFilters & PageRequest): Observable<Page<RouteAdminRow>> {
+	getAdminPage(query: RouteAdminFilters & PageRequest & SortRequest): Observable<Page<RouteAdminRow>> {
 		return this.http.get<Page<RouteAdminRow>>(`${this.baseUrl}/admin`, { params: toHttpParams(query) });
 	}
 

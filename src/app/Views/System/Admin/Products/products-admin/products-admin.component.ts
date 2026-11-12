@@ -22,6 +22,7 @@ import { PaginationComponent } from '@components/Shared/pagination/pagination.co
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
+import { SortHeaderComponent } from '@components/Shared/sort-header/sort-header.component';
 import { ProductFormComponent } from '@components/System/Admin/product-form/product-form.component';
 import { ProductAdminFilters, ProductAdminRow } from '@core/Models/CoreModule/catalog.model';
 import { CopCurrencyPipe } from '@core/Pipes/cop-currency.pipe';
@@ -37,6 +38,7 @@ import { PAGE_SIZE_OPTIONS } from '@core/Utils/order-board.utils';
 @Component({
 	selector: 'app-products-admin',
 	imports: [
+		SortHeaderComponent,
 		CopCurrencyPipe,
 		DataTableComponent,
 		EmptyStateComponent,

@@ -30,9 +30,16 @@ export function filterSellers(rows: readonly ClosureSellerRow[], search: string)
 }
 
 // ----- Orden -----
-// quantity = unidades de la factura global · cash = efectivo a recibir · sales = total vendido
-export type ClosureSortKey = 'seller' | 'quantity' | 'cash' | 'sales';
+// quantity = unidades de la factura global · others = pedidos de otras facturas
+// cash = efectivo a recibir · sales = total vendido
+export const CLOSURE_SORT_KEYS = ['seller', 'quantity', 'others', 'cash', 'sales'] as const;
+export type ClosureSortKey = (typeof CLOSURE_SORT_KEYS)[number];
 export type ClosureSort = BoardSort<ClosureSortKey>;
+
+// El encabezado reutilizable (<th app-sort-header>) emite la clave como texto
+export function isClosureSortKey(key: string): key is ClosureSortKey {
+	return (CLOSURE_SORT_KEYS as readonly string[]).includes(key);
+}
 
 // Sin `sort` se respeta el orden de la API. Empates por id del vendedor para que sea estable.
 export function sortSellers(rows: readonly ClosureSellerRow[], sort: ClosureSort | null): ClosureSellerRow[] {
@@ -44,6 +51,8 @@ export function sortSellers(rows: readonly ClosureSellerRow[], sort: ClosureSort
 				return row.seller_code;
 			case 'quantity':
 				return row.total_quantity;
+			case 'others':
+				return row.other_orders_count;
 			case 'cash':
 				return toNumber(row.cash_to_collect);
 			case 'sales':

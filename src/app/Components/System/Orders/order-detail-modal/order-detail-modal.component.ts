@@ -9,6 +9,7 @@
 //     (bloque «Pago y factura», PATCH /orders/{id}, con su propio botón Guardar).
 //   - DISPATCHED / DELIVERED: reimprimir el comprobante de despacho (CD), solo si el pedido
 //     lleva CD (`has_receipt`: POS + efectivo).
+//   - PENDING / DISPATCHED: cancelar con motivo y nota (<app-order-cancel-modal>).
 //   - DELIVERED / CANCELLED: solo lectura (la API rechaza cambios en estados finales).
 // Muestra también la auditoría: cuándo y quién registró el pedido, la última edición de sus
 // productos (quién y cuándo) y, si está cancelado, el motivo, la nota, quién y cuándo.
@@ -50,6 +51,7 @@ import {
 import { IconComponent } from '@components/Shared/icon/icon.component';
 import { ModalComponent } from '@components/Shared/modal/modal.component';
 import { SkeletonComponent } from '@components/Shared/skeleton/skeleton.component';
+import { OrderCancelModalComponent } from '@components/System/Orders/order-cancel-modal/order-cancel-modal.component';
 import { OrderEditComponent } from '@components/System/Orders/order-edit/order-edit.component';
 import { OrderStatusBadgeComponent } from '@components/System/Orders/order-status-badge/order-status-badge.component';
 import { DriverVehicleDropdown } from '@core/Models/CoreModule/catalog.model';
@@ -96,6 +98,7 @@ const LOADING: DetailState = { status: 'loading' };
 	selector: 'app-order-detail-modal',
 	imports: [
 		IconComponent,
+		OrderCancelModalComponent,
 		OrderEditComponent,
 		ModalComponent,
 		SkeletonComponent,
@@ -231,6 +234,8 @@ export class OrderDetailModalComponent {
 
 	protected readonly saving = signal(false);
 	protected readonly printing = signal(false);
+	// Modal de cancelación abierto; se cierra al cambiar de pedido
+	protected readonly cancelling = linkedSignal<number | null, boolean>({ source: this.orderId, computation: () => false });
 	// El aviso se borra al cambiar de pedido
 	protected readonly feedback = linkedSignal<number | null, Feedback | null>({
 		source: this.orderId,
@@ -315,6 +320,11 @@ export class OrderDetailModalComponent {
 	protected onEditSaved(): void {
 		this.editing.set(false);
 		this.feedback.set({ tone: 'success', text: 'Pedido actualizado.' });
+		this.onEditChanged();
+	}
+
+	protected onCancelled(): void {
+		this.feedback.set({ tone: 'success', text: 'Pedido cancelado.' });
 		this.onEditChanged();
 	}
 

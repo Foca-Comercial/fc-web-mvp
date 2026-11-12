@@ -25,6 +25,7 @@ import { PaginationComponent } from '@components/Shared/pagination/pagination.co
 import { SearchInputComponent } from '@components/Shared/search-input/search-input.component';
 import { TableSkeletonComponent } from '@components/Shared/skeleton/table-skeleton.component';
 import { StatusBadgeComponent } from '@components/Shared/status-badge/status-badge.component';
+import { SortHeaderComponent } from '@components/Shared/sort-header/sort-header.component';
 import { RouteClientsComponent } from '@components/System/Admin/route-clients/route-clients.component';
 import { RouteFormComponent } from '@components/System/Admin/route-form/route-form.component';
 import { Route, RouteAdminFilters, RouteAdminRow } from '@core/Models/ParametersModule/parameters.model';
@@ -42,6 +43,7 @@ import { PAGE_SIZE_OPTIONS } from '@core/Utils/order-board.utils';
 @Component({
 	selector: 'app-routes-admin',
 	imports: [
+		SortHeaderComponent,
 		ApiTimePipe,
 		DataTableComponent,
 		DaysWeekPipe,

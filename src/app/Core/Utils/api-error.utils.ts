@@ -10,6 +10,7 @@ import { DEFAULT_HTTP_MESSAGES, translateValidationMessage } from '@core/Constan
 import {
 	ApiError,
 	BusinessErrorBody,
+	BusinessErrorDetail,
 	FieldError,
 	ValidationErrorBody,
 	ValidationErrorItem,
@@ -111,6 +112,7 @@ export function parseApiError(error: unknown): ApiError {
 			message: body.detail,
 			code: body.code,
 			field: body.field,
+			details: body.details?.map(describeErrorDetail),
 		};
 	}
 
@@ -154,6 +156,12 @@ export async function parseApiErrorAsync(error: unknown): Promise<ApiError> {
 	return parseApiError(error);
 }
 
+// "PO 003: Solo se pueden despachar…"; sin PO (p. ej. un pedido que no existe) usa el N.°
+export function describeErrorDetail(detail: BusinessErrorDetail): string {
+	const who = detail.purchase_order ? `PO ${detail.purchase_order}` : detail.id_order ? `Pedido N.° ${detail.id_order}` : '';
+	return who ? `${who}: ${detail.reason}` : detail.reason;
+}
+
 function defaultMessageForStatus(status: number): string {
 	switch (status) {
 		case 401:
@@ -177,5 +185,5 @@ export function describeApiError(error: ApiError): string[] {
 	if (error.kind === 'validation' && error.fieldErrors.length > 0) {
 		return error.fieldErrors.map((item) => `${item.label}: ${item.message}`);
 	}
-	return [error.message];
+	return [error.message, ...(error.details ?? [])];
 }

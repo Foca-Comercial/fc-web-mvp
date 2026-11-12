@@ -168,31 +168,11 @@
 				<thead>
 					<tr>
 						<th scope="col">N°</th>
-						<th scope="col" [attr.aria-sort]="ariaSort('seller')">
-							<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('seller')">
-								DOMICILIARIO
-								<app-icon [name]="sortIcon('seller')" size="size-3.5" />
-							</button>
-						</th>
-						<th scope="col" [attr.aria-sort]="ariaSort('quantity')">
-							<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('quantity')">
-								FACTURA GLOBAL
-								<app-icon [name]="sortIcon('quantity')" size="size-3.5" />
-							</button>
-						</th>
-						<th scope="col">OTRAS FACTURAS</th>
-						<th scope="col" [attr.aria-sort]="ariaSort('cash')">
-							<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('cash')">
-								EFECTIVO A RECIBIR
-								<app-icon [name]="sortIcon('cash')" size="size-3.5" />
-							</button>
-						</th>
-						<th scope="col" [attr.aria-sort]="ariaSort('sales')">
-							<button type="button" class="inline-flex items-center justify-center gap-1 transition hover:text-brand-950" (click)="toggleSort('sales')">
-								TOTAL VENDIDO
-								<app-icon [name]="sortIcon('sales')" size="size-3.5" />
-							</button>
-						</th>
+						<th app-sort-header sortKey="seller" [sort]="sort()" (sortRequested)="toggleSort($event)">DOMICILIARIO</th>
+						<th app-sort-header sortKey="quantity" [sort]="sort()" (sortRequested)="toggleSort($event)">FACTURA GLOBAL</th>
+						<th app-sort-header sortKey="others" [sort]="sort()" (sortRequested)="toggleSort($event)">OTRAS FACTURAS</th>
+						<th app-sort-header sortKey="cash" [sort]="sort()" (sortRequested)="toggleSort($event)">EFECTIVO A RECIBIR</th>
+						<th app-sort-header sortKey="sales" [sort]="sort()" (sortRequested)="toggleSort($event)">TOTAL VENDIDO</th>
 					</tr>
 				</thead>
 
