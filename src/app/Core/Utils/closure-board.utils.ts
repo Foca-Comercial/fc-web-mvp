@@ -6,7 +6,7 @@
 // Solo la factura POS en efectivo va a la factura global de cada vendedor (hoja «Consolidado
 // POS»); el resto de pedidos facturables sale en «Otras facturas» y el cuadre de caja.
 
-import { ClosureCards, ClosureCategoryTotals, ClosureProduct, ClosureSellerRow, ShiftClosureSummary } from '@core/Models/CoreModule/closure.model';
+import { ClosureCards, ClosureProduct, ClosureSellerRow, ShiftClosureSummary } from '@core/Models/CoreModule/closure.model';
 import { escapeHtml } from './html.utils';
 import { formatCop, toNumber } from './money.utils';
 import { BoardSort } from './order-board.utils';
@@ -76,27 +76,6 @@ export function lastExportedAt(sellers: readonly ClosureSellerRow[]): string | n
 // Completados = lo que se factura: despachados + entregados
 export function completedOrders(cards: ClosureCards): number {
 	return cards.dispatched + cards.delivered;
-}
-
-// ----- Desglose por factura y pago -----
-export interface BreakdownRow {
-	label: string;
-	cash: string;
-	transfer: string;
-	credit: string;
-}
-
-// Dos filas (POS y Electrónica) × tres columnas (Efectivo, Transferencia, Crédito)
-export function breakdownRows(totals: ClosureCategoryTotals): BreakdownRow[] {
-	return [
-		{ label: 'Factura POS', cash: totals.pos_cash, transfer: totals.pos_transfer, credit: totals.pos_credit },
-		{ label: 'Factura electrónica', cash: totals.electronic_cash, transfer: totals.electronic_transfer, credit: totals.electronic_credit },
-	];
-}
-
-// ¿Hay algo que desglosar? (un día sin ventas no muestra el cuadro)
-export function hasBreakdown(totals: ClosureCategoryTotals): boolean {
-	return Object.values(totals).some((value) => toNumber(value) !== 0);
 }
 
 // ----- Filas -----

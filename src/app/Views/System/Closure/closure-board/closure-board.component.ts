@@ -2,8 +2,8 @@
 // Vista: Cierre y reportes
 // ==================================================
 // Resumen de un día (hoy por defecto) para cerrarlo: cards con los totales (ventas y efectivo a
-// recibir), el desglose por tipo de factura y método de pago, una fila por vendedor y el botón
-// que exporta el Excel para Siigo.
+// recibir), una fila por vendedor y el botón que exporta el Excel para Siigo (el desglose por
+// factura y pago vive en la hoja «Cuadre de caja» del Excel, no en pantalla).
 //
 // Reglas (las aplica la API; aquí solo se muestran):
 //   - Se factura lo despachado y entregado del día. Solo la factura POS en efectivo va a la
@@ -39,13 +39,11 @@ import {
 	ClosureSort,
 	ClosureSortKey,
 	ExportState,
-	breakdownRows,
 	completedOrders,
 	exportConfirmLines,
 	exportState,
 	filterSellers,
 	formatSellerCode,
-	hasBreakdown,
 	hasGlobalInvoice,
 	isFutureDate,
 	lastExportedAt,
@@ -122,10 +120,6 @@ export class ClosureBoardComponent {
 	protected readonly completed = computed(() => {
 		const current = this.summary();
 		return current ? completedOrders(current.cards) : 0;
-	});
-	protected readonly breakdown = computed(() => {
-		const current = this.summary();
-		return current && hasBreakdown(current.cards.totals) ? breakdownRows(current.cards.totals) : [];
 	});
 	protected readonly canExport = computed(
 		() => !this.loading() && !this.loadFailed() && !this.exporting() && this.sellers().length > 0
